@@ -40,8 +40,14 @@ class Graph {
   void print() {
     for (int i = 0; i < size; i++) {
       cout << '[' << v[i].id << ']';
-      for (int i : v[i].adj) {
-        cout << ' ' << i;
+      /*      FORMA COMPLETA
+      for (set<int>::iterator it = v[i].adj.begin(); it != v[i].adj.end(); it++) {
+        cout << ' ' << *it;
+      }
+      */
+
+      for (int x : v[i].adj) {
+        cout << ' ' << x;
       }
       cout << endl;
     }
@@ -55,15 +61,12 @@ int main() {
 
   Graph G(N);
 
-  cout << "aqui 0 ";
   for (int i = 0; i < M; i++) {
     int a, b;  // fora do loop?? ¬
     cin >> a >> b;
 
     G.makeEdge(a - 1, b - 1);
-    cout << a << ' ' << b << endl;
   }
-  cout << "aqui";
 
   G.print();
 }
