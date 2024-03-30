@@ -4,6 +4,14 @@
 // ¬¬ por enquanto assumimos que 'A' = 0ª letra do alfabeto (sem offsets)
 using namespace std;
 
+void printSet(set<int> s) {
+  cout << '[' << s.size() << ']';
+  for (int i : s) {
+    cout << ' ' << char(i + 65);
+  }
+  cout << endl;
+}
+
 // O TAD do Grafo
 struct Vertex {
   int id;
@@ -89,22 +97,27 @@ class Graph {
     return component;
   }
 
-  void getComponent(int x, bool* clusteredExplored) {
+  set<int> getComponent(int x, bool* clusteredExplored) {
     set<int>* clusterComponent = new set<int>;
 
     clusterComponent = dfsComponent(x, clusteredExplored, clusterComponent);
 
     if (clusterComponent->size() <= 1) {  // "Links Isolados não fazem parte de nenhum cluster"
-      return;
+      set<int> empty;
+      return empty;
     }
-
-    cout << "components (" << char(x + 65) << "): ";
-    for (int x : *clusterComponent) {
-      cout << char(x + 65) << " ";
+    bool quiet = true;  // ¬ (resolver)
+    if (!quiet) {
+      cout << "components (" << char(x + 65) << "): ";
+      for (int x : *clusterComponent) {
+        cout << char(x + 65) << " ";
+      }
+      cout << endl;
     }
-    cout << endl;
+    set<int> comp = *(clusterComponent);
+    return comp;
   }
-  void getComponents(set<int> cutPoints) {
+  set<set<int>> getComponents(set<int> cutPoints) {
     bool clusteredExplored[size];
     set<int> notCutPoint;  // conjunto de veŕtices de G que não é borda/CutPoint/vértice de corte
     // prepara nova DFS (com ciência dos cutpoints)
@@ -116,13 +129,23 @@ class Graph {
       }
     }
     //
+    set<set<int>> allClusters;
+
     for (int x : notCutPoint) {
-      if (clusteredExplored[x] == false)
-        getComponent(x, clusteredExplored);
+      if (clusteredExplored[x] == false) {
+        set<int> temp = getComponent(x, clusteredExplored);
+        if (temp.size() > 1) {
+          allClusters.insert(temp);
+        }
+      }
     }
     for (int x : cutPoints) {
-      getComponent(x, clusteredExplored);
+      set<int> temp = getComponent(x, clusteredExplored);
+      if (temp.size() > 1) {
+        allClusters.insert(temp);
+      }
     }
+    return allClusters;
   }
 
   set<int>* dfs(int w, int parent, int& t, set<int>* cutSet = nullptr) {
@@ -192,7 +215,15 @@ int main() {
     cout << char(x + 65) << ' ';
   }
   cout << endl;
+
+  set<set<int>> clusters = G.getComponents(*cp);
   cout << endl;
 
-  G.getComponents(*cp);
+  cout << "Listing the " << clusters.size() << " clusters:" << endl;
+  int id = 0;
+  for (set<int> s : clusters) {
+    cout << char((id + G.size) + 65) << '(' << id + G.size << ") ";
+    printSet(s);
+    id++;
+  }
 }
