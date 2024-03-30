@@ -46,6 +46,7 @@ class Graph {
   }
 
   void print() {
+    cout << "Lista de Adjacência:" << endl;
     for (int i = 0; i < size; i++) {
       cout << '[' << v[i].id << ']';
       /*      FORMA COMPLETA
@@ -54,12 +55,14 @@ class Graph {
       }
       */
       //       FORMA BONITA
-      cout << "Lista de Adjacência:" << endl;
+
       for (int x : v[i].adj) {
         cout << ' ' << x;
       }
       cout << endl;
+      cout << endl;
     }
+    cout << "Explorado , Abertura, mínimo" << endl;
     for (int i = 0; i < size; i++) {
       cout << "~[" << i << ']' << ' ' << explored[i] << ' ' << open[i] << ' ' << min[i] << endl;
     }
@@ -75,21 +78,22 @@ class Graph {
     }
 
     explored[w] = true;
-    open[w] = min[w] = t++;
+    open[w] = min[w] = t++; // inicialmente min[w] = ao tempo de abertura (open) de w
     int children = 0;
 
     for (int u : v[w].adj) {
       if (u == parent) continue;                          // se a aresta volta pro pai, ignora.
-      if (explored[u] == true) {                          // se o vizinho já foi visitado na DFS
-        min[w] = (min[w] <= open[u]) ? min[w] : open[u];  // min[v] = mínimo(min[v], open[u])
+      if (explored[u] == true) {                          // se o vizinho já foi visitado na DFS (aresta de retorno)
+        min[w] = (min[w] <= open[u]) ? min[w] : open[u];  // min[w] = mínimo(min[w], open[u])
       } else {                                            // se o vizinho ainda não foi visitado
         dfs(u, w, t, cutPoints);
-        min[w] = (min[w] <= min[u]) ? min[w] : min[u];
+        min[w] = (min[w] <= min[u]) ? min[w] : min[u];    // se min de w é menor que de seus descendentes na DFSTree permanece
+                                                          //caso o contário o min w passa a ser o min de seu descendente
         if (min[u] >= open[w] && parent != -1) {
-          cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
+          //cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
           cutPoints->insert(w);
         } else {
-          cout << "NOT CUTPOINT" << endl;
+          //cout << "NOT CUTPOINT" << endl;
         }
         children++;
       }
@@ -122,6 +126,8 @@ int main() {
 
   G.print();
   set<int>* cp = G.dfs(0, -1);
+
+  G.print();
   for (int x : *cp) {
     cout << x << ' ';
   }
