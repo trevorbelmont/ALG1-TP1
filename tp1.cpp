@@ -45,7 +45,7 @@ class Graph {
         cout << ' ' << *it;
       }
       */
-
+      //       FORMA BONITA
       for (int x : v[i].adj) {
         cout << ' ' << x;
       }
@@ -54,7 +54,7 @@ class Graph {
   }
 };
 
-int main() {
+Graph loadGraph() {
   int N, M;
 
   cin >> N >> M;
@@ -69,4 +69,19 @@ int main() {
   }
 
   G.print();
+  return G;
+}
+int main() {
+  Graph G = loadGraph();
+
+  int N = G.size;
+  vector<bool> explored;
+  vector<int> open, low;
+  explored.assign(N, false);
+  open.assign(N, -1);
+  low.assign (N,-1);
+
+  for (int i = 0; i < N; i++) {
+    cout << '[' << i << ']' << explored[i] << ',' << open[i] << ',' << low[i] << endl;
+  }
 }
