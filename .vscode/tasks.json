@@ -13,7 +13,7 @@
         {
             "type": "shell",
             "label": "Executar",
-            "command": "./exe",
+            "command": "./exe < input.in",
             "problemMatcher": [],
             "group": {
                 "kind": "test",
