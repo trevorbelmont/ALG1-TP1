@@ -18,25 +18,15 @@ Listas de Adjacência:
 
 Listing the 4 CutPoints: [4]: C E I M 
 
-Listing the 7 clusters:
+Listing the 4 clusters:
 Q [4] A B C D 
-R [2] C E 
-S [2] C I 
-T [4] E F G H 
-U [3] E I M 
-V [4] I J K L 
-W [4] M N O P 
+R [4] E F G H 
+S [4] I J K L 
+T [4] M N O P 
 
 ForestDupster: 
-(V E) = 11 10
+(V E) = 8 7
 C Q
-C R
-C S
 E R
-E T
-E U
 I S
-I U
-I V
-M U
-M W
+M T

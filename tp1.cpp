@@ -90,20 +90,32 @@ class Graph {
 
   // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
   // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
-  set<int>* dfsComponent(int w, bool clustered[], set<int>* component = nullptr) {
+  set<int>* dfsComponent(int w, int parent, bool clustered[], set<int>* component = nullptr) {
     clustered[w] = true;
     component->insert(w);
 
     for (int u : v[w].adj) {
-      if (clustered[u] == false && v[u].isCutpoint == false) {
-        dfsComponent(u, clustered, component);
-      } else if (v[u].isCutpoint == true) {
+      if (u == parent) {
+        continue;
+      }
+      if (clustered[u] == false && v[u].isCutpoint == false && v[w].isCutpoint == false) {
+        dfsComponent(u, w, clustered, component);
+      }
+
+      else if (clustered[u] == false && v[u].isCutpoint == true && v[w].isCutpoint == false) {
         component->insert(u);
         clustered[u] == true;
         continue;
       }
-      if (v[w].isCutpoint) {
-        return component;
+      // ¬¬ !clustered[u] ??
+      if (clustered[u] == false && v[w].isCutpoint && v[u].isCutpoint) {
+        dfsComponent(u, w, clustered, component);
+      }
+
+      // Uma vez em um cutPoint não visita não-cutpoint (começou em cutPoint)
+      if (v[w].isCutpoint && v[u].isCutpoint == false) {
+        if (VERBOSE) cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl;
+        continue;
       }
     }
     return component;
@@ -112,7 +124,7 @@ class Graph {
   set<int> getComponent(int x, bool* clusteredExplored) {
     set<int>* clusterComponent = new set<int>;
 
-    clusterComponent = dfsComponent(x, clusteredExplored, clusterComponent);
+    clusterComponent = dfsComponent(x, -1, clusteredExplored, clusterComponent);
 
     if (clusterComponent->size() <= 1) {  // "Links Isolados não fazem parte de nenhum cluster"
       set<int> empty;
@@ -150,7 +162,7 @@ class Graph {
     }
 
     // Agora que identificamos todos clusters que possuem no mínimo um não-cutpoint (e marcamos os vértices visistados)
-    // Identificaremos os clusters que são formados apenas por cutpoints (bordas)
+    // Identificaremos os clusters que são formados apenas por cutpoints (bordas) ¬¬¬¬ erro aqui
     for (int x : cutPoints) {
       set<int> temp = getComponent(x, clusteredExplored);
       if (temp.size() > 1) {
