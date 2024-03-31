@@ -204,6 +204,12 @@ Graph loadGraph() {
 
   cin >> N >> M;
 
+  // se o limite o número de vértices for maior que o número de letras do alfabeto (maiúsculo) ¬
+  // força o desligamento do verbose
+  if (VERBOSE && N > 26) {
+    VERBOSE = false;  // não existem tantas letras maiúscualas assim, parça...
+  }
+
   Graph G(N);
 
   int a, b;  // fora do loop?? ¬
@@ -218,8 +224,9 @@ Graph loadGraph() {
 // Um gerador de Floresta Clusters-Bordas que retorna um Grafo
 void ForestDump(set<set<int>> allClusters, set<int> cutpoints, int sizeOfGraph) {
   if (VERBOSE) {
+    cout << endl;
     cout << "ForestDupster: " << endl;
-    cout << "V E = ";
+    cout << "(V E) = ";
   }
 
   int vertexCount, edgeCount;  // número de vértices e arestas do grafo condensado (Floresta Cluster-Bordas)
@@ -267,7 +274,8 @@ int main(int charc, char** charv) {
 
   if (VERBOSE) {
     G.print(ALFABETICAL);
-    cout << " Listing the " << (*cp).size() << " CutPoints: ";
+    cout << endl;
+    cout << "Listing the " << (*cp).size() << " CutPoints: ";
     printSet(*cp, ' ', ALFABETICAL, true);
   } else {
     cout << cp->size() << endl;
@@ -275,7 +283,12 @@ int main(int charc, char** charv) {
   }
   set<set<int>> clusters = G.getComponents(*cp);
 
-  if (VERBOSE) cout << "Listing the " << clusters.size() << " clusters:" << endl;
+  if (VERBOSE) {
+    cout << endl;
+    cout << "Listing the " << clusters.size() << " clusters:" << endl;
+  } else {
+    cout << clusters.size() << endl;
+  }
   int id = 0;
   for (set<int> s : clusters) {
     if (ALFABETICAL) {
