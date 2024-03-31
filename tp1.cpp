@@ -4,12 +4,22 @@
 // ¬¬ por enquanto assumimos que 'A' = 0ª letra do alfabeto (sem offsets)
 using namespace std;
 
-void printSet(set<int> s) {
-  cout << '[' << s.size() << ']';
-  for (int i : s) {
-    cout << ' ' << char(i + 65);
+bool ALFABETICAL = false;
+bool VERBOSE = false;
+
+void printSet(set<int> s, char separator, bool alfabetic = false, bool verbose = false) {
+  if (verbose) cout << '[' << s.size() << "]:" << separator;
+  if (alfabetic) {
+    for (int i : s) {
+      cout << char(i + 65) << separator;
+    }
+    if (separator != '\n') cout << endl;  // evita uma quebra de linha a mais se JÁ ESTIVER SEPARANDO POR QUEBRAS DE LINHA
+  } else {
+    for (int i : s) {
+      cout << (i + 1) << separator;
+    }
+    if (separator != '\n') cout << endl;  // evita uma quebra de linha a mais se JÁ ESTIVER SEPARANDO POR QUEBRAS DE LINHA
   }
-  cout << endl;
 }
 
 // O TAD do Grafo
@@ -55,29 +65,31 @@ class Graph {
     }
   }
 
-  void print() {
-    cout << "Lista de Adjacência:" << endl;
-    for (int i = 0; i < size; i++) {
-      cout << '[' << char(65 + v[i].id) << "-" << open[i] << "]";
-      /*      FORMA COMPLETA
-      for (set<int>::iterator it = v[i].adj.begin(); it != v[i].adj.end(); it++) {
-        cout << ' ' << *it;
-      }
-      */
-      //       FORMA BONITA
+  // Imprime a lista de adjacências com letras ou números
+  void print(bool alfabetic = false) {
+    cout << "Listas de Adjacência:" << endl;
 
-      for (int x : v[i].adj) {
-        cout << ' ' << char(65 + x);
+    if (alfabetic) {
+      for (int i = 0; i < size; i++) {  // para cada vértice do grafo
+        cout << '[' << char(65 + v[i].id) << "-" << open[i] << "]";
+        for (int x : v[i].adj) {  // imprime a lista de adjacência com letras
+          cout << ' ' << char(65 + x);
+        }
+        cout << "  ~(" << min[i] << ")" << endl;
       }
-      cout << "  ~(" << min[i] << ")" << endl;
+    } else if (alfabetic == false) {
+      for (int i = 0; i < size; i++) {  // para cada vértice do grafo
+        cout << '[' << v[i].id + 1 << "-" << open[i] << "]";
+        for (int x : v[i].adj) {  // imprime a lista de adjacência com letras
+          cout << ' ' << x + 1;
+        }
+        cout << "  ~(" << min[i] << ")" << endl;
+      }
     }
-    /* cout << "Explorado , Abertura, mínimo" << endl;
-    for (int i = 0; i < size; i++) {
-      cout << "~[" << i << ']' << ' ' << explored[i] << ' ' << open[i] << ' ' << min[i] << endl;
-    } */
   }
 
-  // Só pode ser chamada depois da primeira DFS
+  // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
+  // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
   set<int>* dfsComponent(int w, bool clustered[], set<int>* component = nullptr) {
     clustered[w] = true;
     component->insert(w);
@@ -106,17 +118,11 @@ class Graph {
       set<int> empty;
       return empty;
     }
-    bool quiet = true;  // ¬ (resolver)
-    if (!quiet) {
-      cout << "components (" << char(x + 65) << "): ";
-      for (int x : *clusterComponent) {
-        cout << char(x + 65) << " ";
-      }
-      cout << endl;
-    }
     set<int> comp = *(clusterComponent);
     return comp;
   }
+
+  // Retorna
   set<set<int>> getComponents(set<int> cutPoints) {
     bool clusteredExplored[size];
     set<int> notCutPoint;  // conjunto de veŕtices de G que não é borda/CutPoint/vértice de corte
@@ -131,14 +137,20 @@ class Graph {
     //
     set<set<int>> allClusters;
 
+    // primeiro identifica os clusters a partir dos vértices que não são cutpoints.
+    // Os vértices visitados na dfsComponent são marcados como explorados
     for (int x : notCutPoint) {
-      if (clusteredExplored[x] == false) {
+      // evita que tente identificar o mesmo cluster mais que uma vez
+      if (clusteredExplored[x] == false) {  // portanto, só roda dfsComponent em não cutPoints ainda não explorados.
         set<int> temp = getComponent(x, clusteredExplored);
-        if (temp.size() > 1) {
+        if (temp.size() > 1) {  // "vértices isoladoss não são clusters"
           allClusters.insert(temp);
         }
       }
     }
+
+    // Agora que identificamos todos clusters que possuem no mínimo um não-cutpoint (e marcamos os vértices visistados)
+    // Identificaremos os clusters que são formados apenas por cutpoints (bordas)
     for (int x : cutPoints) {
       set<int> temp = getComponent(x, clusteredExplored);
       if (temp.size() > 1) {
@@ -203,27 +215,83 @@ Graph loadGraph() {
   return G;
 }
 
-int main() {
+// Um gerador de Floresta Clusters-Bordas que retorna um Grafo
+void ForestDump(set<set<int>> allClusters, set<int> cutpoints, int sizeOfGraph) {
+  if (VERBOSE) {
+    cout << "ForestDupster: " << endl;
+    cout << "V E = ";
+  }
+
+  int vertexCount, edgeCount;  // número de vértices e arestas do grafo condensado (Floresta Cluster-Bordas)
+  vertexCount = (allClusters.size() + cutpoints.size());
+  edgeCount = vertexCount - 1;
+  cout << vertexCount << ' ' << edgeCount << endl;
+
+  for (int cp : cutpoints) {
+    int clustId = 0;
+    for (set<int> cluster : allClusters) {
+      if (cluster.find(cp) != cluster.end()) {  // se cp pertence ao cluster
+        if (ALFABETICAL) {
+          cout << char(cp + 65) << " " << char(65 + (clustId + sizeOfGraph)) << endl;  // Grafo com letras
+        } else {
+          cout << (cp + 1) << " " << ((clustId + sizeOfGraph + 1)) << endl;
+        }
+      }
+      clustId++;
+    }
+  }
+}
+
+int main(int charc, char** charv) {
+  if (charc > 1) {
+    for (int i = 1; i < charc; i++) {
+      if (charv[i][0] == '-') {
+        switch (charv[i][1]) {
+          case 'a':
+            ALFABETICAL = true;
+            break;
+          case 'v':
+            VERBOSE = true;
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  }
+
   Graph G = loadGraph();
 
   int t = 0;
   set<int>* cp = G.dfs(0, -1, t);
 
-  G.print();
-  cout << "CutPoints: ";
-  for (int x : *cp) {
-    cout << char(x + 65) << ' ';
+  if (VERBOSE) {
+    G.print(ALFABETICAL);
+    cout << " Listing the " << (*cp).size() << " CutPoints: ";
+    printSet(*cp, ' ', ALFABETICAL, true);
+  } else {
+    cout << cp->size() << endl;
+    printSet(*cp, '\n', ALFABETICAL, false);
   }
-  cout << endl;
-
   set<set<int>> clusters = G.getComponents(*cp);
-  cout << endl;
 
-  cout << "Listing the " << clusters.size() << " clusters:" << endl;
+  if (VERBOSE) cout << "Listing the " << clusters.size() << " clusters:" << endl;
   int id = 0;
   for (set<int> s : clusters) {
-    cout << char((id + G.size) + 65) << '(' << id + G.size << ") ";
-    printSet(s);
+    if (ALFABETICAL) {
+      cout << char((id + G.size) + 65) << ' ';
+    } else {
+      cout << (id + G.size + 1) << ' ';
+    }
+
+    if (VERBOSE) {
+      cout << '[' << s.size() << "] ";
+    } else {
+      cout << s.size() << ' ';
+    }
+    printSet(s, ' ', ALFABETICAL);
     id++;
   }
+
+  ForestDump(clusters, *cp, G.size);
 }
