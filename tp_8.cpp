@@ -6,7 +6,6 @@ using namespace std;
 
 bool ALFABETICAL = false;
 bool VERBOSE = false;
-int ROOT1STDFS = 0;
 
 void printSet(set<int> s, char separator, bool alfabetic = false, bool verbose = false) {
   if (verbose) cout << '[' << s.size() << "]:" << separator;
@@ -21,25 +20,6 @@ void printSet(set<int> s, char separator, bool alfabetic = false, bool verbose =
     }
     if (separator != '\n') cout << endl;  // evita uma quebra de linha a mais se JÁ ESTIVER SEPARANDO POR QUEBRAS DE LINHA
   }
-}
-
-bool isSubSet(set<int> s, set<set<int>> sets) {
-  bool subSet = false;
-  for (set super : sets) {
-    int intersect = 0;
-    if (super.size() < 2) {
-      continue;
-    }
-    for (int x : s) {
-      if (super.count(x)) {  // ¬¬
-        intersect++;
-      }
-      if (intersect >= 2) {
-        return true;
-      }
-    }
-  }
-  return subSet;
 }
 
 // O TAD do Grafo
@@ -110,36 +90,20 @@ class Graph {
 
   // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
   // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
-  set<int>* dfsComponent(int w, int parent, bool clustered[], set<int>* component = nullptr) {
+  set<int>* dfsComponent(int w, bool clustered[], set<int>* component = nullptr) {
     clustered[w] = true;
     component->insert(w);
 
     for (int u : v[w].adj) {
-      if (u == parent) {
+      if (clustered[u] == false && v[u].isCutpoint == false) {
+        dfsComponent(u, clustered, component);
+      } else if (v[u].isCutpoint == true) {
+        component->insert(u);
+        clustered[u] == true;
         continue;
       }
-      if (!v[w].isCutpoint) {
-        if (clustered[u] == false && v[u].isCutpoint == false) {
-          dfsComponent(u, w, clustered, component);
-        }
-
-        else if (clustered[u] == false && v[u].isCutpoint == true) {
-          component->insert(u);
-          clustered[u] == true;
-          continue;
-        }
-      }
       if (v[w].isCutpoint) {
-        // ¬¬ !clustered[u] ??
-        if (clustered[u] == false && v[u].isCutpoint) {
-          dfsComponent(u, w, clustered, component);
-        }
-
-        // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
-        if (v[u].isCutpoint == false) {
-          if (VERBOSE) cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl;
-          continue;
-        }
+        return component;
       }
     }
     return component;
@@ -148,7 +112,7 @@ class Graph {
   set<int> getComponent(int x, bool* clusteredExplored) {
     set<int>* clusterComponent = new set<int>;
 
-    clusterComponent = dfsComponent(x, -1, clusteredExplored, clusterComponent);
+    clusterComponent = dfsComponent(x, clusteredExplored, clusterComponent);
 
     if (clusterComponent->size() <= 1) {  // "Links Isolados não fazem parte de nenhum cluster"
       set<int> empty;
@@ -180,10 +144,8 @@ class Graph {
       if (clusteredExplored[x] == false) {  // portanto, só roda dfsComponent em não cutPoints ainda não explorados.
         set<int> temp = getComponent(x, clusteredExplored);
         if (temp.size() > 1) {  // "vértices isoladoss não são clusters"
-          if (VERBOSE) {
-            cout << char(x + 65) << ": ";
-            printSet(temp, ' ', ALFABETICAL, VERBOSE);
-          }
+          cout << char(x + 65) << ": ";
+          printSet(temp, ' ', ALFABETICAL, VERBOSE);
           allClusters.insert(temp);
         }
       }
@@ -192,22 +154,11 @@ class Graph {
     // Agora que identificamos todos clusters que possuem no mínimo um não-cutpoint (e marcamos os vértices visistados)
     // Identificaremos os clusters que são formados apenas por cutpoints (bordas)
     for (int x : cutPoints) {
-      clusteredExplored[x] = false;
-    }
-
-    for (int x : cutPoints) {
       set<int> temp = getComponent(x, clusteredExplored);
       if (temp.size() > 1) {
-        if (!isSubSet(temp, allClusters)) {  // ¬¬ muito pesadot
-          if (VERBOSE) {
-            cout << '~' << char(x + 65) << ": ";
-            printSet(temp, ' ', ALFABETICAL, VERBOSE);
-          }
-          allClusters.insert(temp);
-        } else if (VERBOSE) {
-          cout << "discarded " << x << ": ";
-          printSet(temp, ' ', ALFABETICAL, VERBOSE);
-        }
+        cout << '~' << char(x + size + 65) << ": ";
+        printSet(temp, ' ', ALFABETICAL, VERBOSE);
+        allClusters.insert(temp);
       }
     }
     return allClusters;
@@ -236,10 +187,8 @@ class Graph {
         dfs(u, w, t, cutPoints);                        // Chama DFS do vizinho não explorado
         min[w] = (min[w] <= min[u]) ? min[w] : min[u];  // se min de w é menor que de seus descendentes na DFSTree permanece
                                                         // caso o contário o min w passa a ser o min de seu descendente
-
-        // se o min (vertex de retorno mínimo) do vizinho u é menor que o mínimo do vertex w(atual), w é cutpoint.
         if (min[u] >= open[w] && parent != -1) {
-          if (VERBOSE) cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
+          // cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
           cutPoints->insert(w);
           v[w].isCutpoint = true;
         }
@@ -247,9 +196,7 @@ class Graph {
       }
     }
     if (parent == -1 && children > 1) {  // se é o vértice raiz da DFS e tem mais que um filho
-      cutPoints->insert(w);
-      v[w].isCutpoint = true;
-      if (VERBOSE) cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
+      cout << " ============== IS c u t p o i n t (" << v << ") ============" << endl;
     }
     t++;
     return cutPoints;
@@ -317,14 +264,6 @@ int main(int charc, char** charv) {
           case 'v':
             VERBOSE = true;
             break;
-          case 'r':
-            ROOT1STDFS = stoi(charv[i + 1]);
-            if (VERBOSE) {
-              cout << "ROOT of 1st DFS has been changed to vertex [";
-              (ALFABETICAL) ? cout << char(65 + ROOT1STDFS) : cout << ROOT1STDFS + 1;
-              cout << "]." << endl;
-            }
-
           default:
             break;
         }
@@ -335,11 +274,7 @@ int main(int charc, char** charv) {
   Graph G = loadGraph();
 
   int t = 0;
-
-  // checa se a dretriz de vértice original da 1ª DFS é um vértice válido
-  ROOT1STDFS = (ROOT1STDFS < G.size) ? ROOT1STDFS : 0;
-
-  set<int>* cp = G.dfs(ROOT1STDFS, -1, t);
+  set<int>* cp = G.dfs(0, -1, t);
 
   if (VERBOSE) {
     G.print(ALFABETICAL);
@@ -350,7 +285,6 @@ int main(int charc, char** charv) {
     cout << cp->size() << endl;
     printSet(*cp, '\n', ALFABETICAL, false);
   }
-
   set<set<int>> clusters = G.getComponents(*cp);
 
   if (VERBOSE) {
