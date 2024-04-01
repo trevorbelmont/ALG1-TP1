@@ -2,6 +2,9 @@
 #include <set>
 #include <vector>
 // ¬¬ por enquanto assumimos que 'A' = 0ª letra do alfabeto (sem offsets)
+// ¬¬ Relações de low dos internos tendem a ser igual ao tempo de entrada do cluster (ou todos os lows são iguais - no caso do cluster que contem o root)
+// ¬¬ Avaliando clusters formados por cutpoints, apenas são cutpoints-de-cutpoints vertex(cutpoints) que não são vizinhos de vértices internos (?)
+// !! Checando cutpoint-clusters: dois cutpoints só formam um cluster se eles tiverem diferentes lowpoints!
 using namespace std;
 
 bool ALFABETICAL = false;
@@ -123,9 +126,9 @@ class Graph {
           dfsComponent(u, w, clustered, component);
         }
 
-        else if (clustered[u] == false && v[u].isCutpoint == true) {
+        else if (v[u].isCutpoint == true) {
           component->insert(u);
-          clustered[u] == true;
+          // clustered[u] == true;
           continue;
         }
       }
@@ -138,7 +141,7 @@ class Graph {
         // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
         if (v[u].isCutpoint == false) {
           if (VERBOSE) cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl;
-          continue;
+          continue;  // checa próximo vizinho
         }
       }
     }

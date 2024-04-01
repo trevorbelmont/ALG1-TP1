@@ -2,6 +2,10 @@
 #include <set>
 #include <vector>
 // ¬¬ por enquanto assumimos que 'A' = 0ª letra do alfabeto (sem offsets)
+// ¬¬ Relações de low dos internos tendem a ser igual ao tempo de entrada do cluster (ou todos os lows são iguais - no caso do cluster que contem o root)
+// ¬¬ Avaliando clusters formados por cutpoints, apenas são cutpoints-de-cutpoints vertex(cutpoints) que não são vizinhos de vértices internos (?)
+// !! Checando cutpoint-clusters: dois cutpoints só formam um cluster se eles tiverem diferentes lowpoints!
+
 using namespace std;
 
 bool ALFABETICAL = false;
@@ -196,7 +200,9 @@ class Graph {
       }
     }
     if (parent == -1 && children > 1) {  // se é o vértice raiz da DFS e tem mais que um filho
-      cout << " ============== IS c u t p o i n t (" << v << ") ============" << endl;
+      // cout << "============== IS c u t p o i n t (" << v << ") ============" << endl;
+      cutPoints->insert(w);
+      v[w].isCutpoint = true;
     }
     t++;
     return cutPoints;
