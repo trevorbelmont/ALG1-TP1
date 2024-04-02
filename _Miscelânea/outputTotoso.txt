@@ -1,32 +1,20 @@
-Listas de Adjacência:
-[A-0] B D  ~(0)
-[B-1] A C  ~(0)
-[C-2] B D E I  ~(0)
-[D-3] A C  ~(0)
-[E-5] C F H M  ~(2)
-[F-6] E G  ~(5)
-[G-7] F H  ~(5)
-[H-8] E G  ~(5)
-[I-13] C J L M  ~(2)
-[J-14] I K  ~(13)
-[K-15] J L  ~(13)
-[L-16] I K  ~(13)
-[M-12] E I N P  ~(2)
-[N-21] M O  ~(12)
-[O-22] N P  ~(12)
-[P-23] M O  ~(12)
-
-Listing the 4 CutPoints: [4]: C E I M 
-
-Listing the 4 clusters:
-Q [4] A B C D 
-R [4] E F G H 
-S [4] I J K L 
-T [4] M N O P 
-
-ForestDupster: 
-(V E) = 8 7
-C Q
-E R
-I S
-M T
+4
+3
+5
+9
+13
+5
+17 4 1 2 3 4 
+18 4 3 5 9 13 
+19 4 5 6 7 8 
+20 4 9 10 11 12 
+21 4 13 14 15 16 
+9 8
+3 17
+3 18
+5 18
+5 19
+9 18
+9 20
+13 18
+13 21

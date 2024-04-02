@@ -122,9 +122,11 @@ class Graph {
       if (u == parent) {
         continue;
       }
-      if (!v[w].isCutpoint) {
+      if ( !v[w].isCutpoint) {
         if (clustered[u] == false && v[u].isCutpoint == false) {
           dfsComponent(u, w, clustered, component);
+          //v[w].adj.erase(u);
+          //v[u].adj.erase(v);
         }
 
         else if (v[u].isCutpoint == true) {
@@ -187,19 +189,6 @@ class Graph {
           if (VERBOSE) {
             cout << char(x + 65) << ": ";
             printSet(temp, ' ', ALFABETICAL, VERBOSE);
-          }
-
-          for (int x : temp) {
-            if (v[x].isCutpoint) {
-              for (int y : temp) {
-                if (x == y) continue;
-                if (v[y].isCutpoint) {
-                  v[x].adj.erase(y);
-                  v[y].adj.erase(x);
-                  if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
-                }
-              }
-            }
           }
           allClusters.insert(temp);
         }
@@ -308,25 +297,17 @@ void ForestDump(set<set<int>> allClusters, set<int> cutpoints, int sizeOfGraph) 
   edgeCount = vertexCount - 1;
   cout << vertexCount << ' ' << edgeCount << endl;
 
-  if (!cutpoints.empty()) {  // se o grafo possui cutpoints (mais que um cluster)
-    for (int cp : cutpoints) {
-      int clustId = 0;
-      for (set<int> cluster : allClusters) {
-        if (cluster.find(cp) != cluster.end()) {  // se cp pertence ao cluster
-          if (ALFABETICAL) {
-            cout << char(cp + 65) << " " << char(65 + (clustId + sizeOfGraph)) << endl;  // Grafo com letras
-          } else {
-            cout << (cp + 1) << " " << ((clustId + sizeOfGraph + 1)) << endl;
-          }
+  for (int cp : cutpoints) {
+    int clustId = 0;
+    for (set<int> cluster : allClusters) {
+      if (cluster.find(cp) != cluster.end()) {  // se cp pertence ao cluster
+        if (ALFABETICAL) {
+          cout << char(cp + 65) << " " << char(65 + (clustId + sizeOfGraph)) << endl;  // Grafo com letras
+        } else {
+          cout << (cp + 1) << " " << ((clustId + sizeOfGraph + 1)) << endl;
         }
-        clustId++;
       }
-    }
-  } else {  // o grafo não possui cutpoints (1 cluster só)
-    if (ALFABETICAL) {
-      cout << char(65 + (sizeOfGraph + 1)) << endl;  // Grafo com letras
-    } else {
-      cout << (sizeOfGraph + 1) << endl;
+      clustId++;
     }
   }
 }
