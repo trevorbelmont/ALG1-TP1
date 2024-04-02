@@ -6,6 +6,12 @@
 // ¬¬ Avaliando clusters formados por cutpoints, apenas são cutpoints-de-cutpoints vertex(cutpoints) que não são vizinhos de vértices internos (?)
 // !! Checando cutpoint-clusters: dois cutpoints só formam um cluster se eles tiverem diferentes lowpoints?
 //   vizinhos com low-points iguais deveriam ser aceitos??
+
+// !! ¬¬ ainda tem erro no caso scorpion (clustofbordas)
+
+/*
+ http://graphonline.ru/pt/?graph=kIpBhNLISfetMSFC      ( scorpion )
+*/
 using namespace std;
 
 bool ALFABETICAL = false;
