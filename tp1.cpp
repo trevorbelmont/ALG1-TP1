@@ -4,7 +4,8 @@
 // ¬¬ por enquanto assumimos que 'A' = 0ª letra do alfabeto (sem offsets)
 // ¬¬ Relações de low dos internos tendem a ser igual ao tempo de entrada do cluster (ou todos os lows são iguais - no caso do cluster que contem o root)
 // ¬¬ Avaliando clusters formados por cutpoints, apenas são cutpoints-de-cutpoints vertex(cutpoints) que não são vizinhos de vértices internos (?)
-// !! Checando cutpoint-clusters: dois cutpoints só formam um cluster se eles tiverem diferentes lowpoints!
+// !! Checando cutpoint-clusters: dois cutpoints só formam um cluster se eles tiverem diferentes lowpoints?
+//   vizinhos com low-points iguais deveriam ser aceitos??
 using namespace std;
 
 bool ALFABETICAL = false;
@@ -134,7 +135,7 @@ class Graph {
       }
       if (v[w].isCutpoint) {
         // ¬¬ !clustered[u] ??
-        if (clustered[u] == false && v[u].isCutpoint) {
+        if (/* clustered[u] == false &&  */ v[u].isCutpoint) {
           dfsComponent(u, w, clustered, component);
         }
 
@@ -187,6 +188,19 @@ class Graph {
             cout << char(x + 65) << ": ";
             printSet(temp, ' ', ALFABETICAL, VERBOSE);
           }
+
+          for (int x : temp) {
+            if (v[x].isCutpoint) {
+              for (int y : temp) {
+                if (x == y) continue;
+                if (v[y].isCutpoint) {
+                  v[x].adj.erase(y);
+                  v[y].adj.erase(x);
+                  cout << "deleting edge (" << x << "-" << y << ")" << endl;
+                }
+              }
+            }
+          }
           allClusters.insert(temp);
         }
       }
@@ -201,7 +215,7 @@ class Graph {
     for (int x : cutPoints) {
       set<int> temp = getComponent(x, clusteredExplored);
       if (temp.size() > 1) {
-        if (!isSubSet(temp, allClusters)) {  // ¬¬ muito pesadot
+        if (true) {  // if (!isSubSet(temp, allClusters)) {  // ¬¬ muito pesadot
           if (VERBOSE) {
             cout << '~' << char(x + 65) << ": ";
             printSet(temp, ' ', ALFABETICAL, VERBOSE);
