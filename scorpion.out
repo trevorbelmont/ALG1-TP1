@@ -1,0 +1,125 @@
+ ============== IS c u t p o i n t (2) ============
+ ============== IS c u t p o i n t (4) ============
+ ============== IS c u t p o i n t (14) ============
+ ============== IS c u t p o i n t (13) ============
+ ============== IS c u t p o i n t (12) ============
+ ============== IS c u t p o i n t (9) ============
+ ============== IS c u t p o i n t (8) ============
+ ============== IS c u t p o i n t (7) ============
+ ============== IS c u t p o i n t (6) ============
+ ============== IS c u t p o i n t (0) ============
+Listas de Adjacência:
+[A-0] B C E  ~(0)
+[B-1] A  ~(1)
+[C-3] A D G  ~(0)
+[D-4] C  ~(4)
+[E-7] A F G  ~(0)
+[F-8] E  ~(8)
+[G-6] C E H  ~(0)
+[H-11] G I  ~(11)
+[I-12] H J  ~(12)
+[J-13] I K L  ~(13)
+[K-14] J M  ~(13)
+[L-16] J M  ~(13)
+[M-15] K L N O  ~(13)
+[N-18] M O T X  ~(15)
+[O-19] M N P Q S  ~(15)
+[P-20] O R S  ~(19)
+[Q-22] O R S  ~(19)
+[R-21] P Q S  ~(19)
+[S-23] O P Q R  ~(19)
+[T-29] N U  ~(18)
+[U-30] T V  ~(18)
+[V-31] U W  ~(18)
+[W-32] V X  ~(18)
+[X-33] N W  ~(18)
+
+Listing the 10 CutPoints: [10]: A C E G H I J M N O 
+B: [2]: A B 
+D: [2]: C D 
+F: [2]: E F 
+K: [3]: J K M 
+L: [3]: J L M 
+P: [5]: O P Q R S 
+T: [6]: N T U V W X 
+	edge (A,B) was ignored
+	edge (C,D) was ignored
+	edge (E,F) was ignored
+	edge (J,K) was ignored
+	edge (J,L) was ignored
+Cluster de cutpoints [0]1 
+~A: [7]: A C E G H I J 
+delete cutpoints edge (0-2)
+delete cutpoints edge (0-4)
+delete cutpoints edge (2-6)
+delete cutpoints edge (4-6)
+delete cutpoints edge (6-7)
+delete cutpoints edge (7-8)
+delete cutpoints edge (8-9)
+	edge (C,D) was ignored
+Cluster de cutpoints [2]1 
+discarded 2: [0]: 
+	edge (E,F) was ignored
+Cluster de cutpoints [4]1 
+discarded 4: [0]: 
+discarded 6: [0]: 
+discarded 7: [0]: 
+discarded 8: [0]: 
+	edge (J,K) was ignored
+	edge (J,L) was ignored
+Cluster de cutpoints [9]14 
+discarded 9: [0]: 
+	edge (M,K) was ignored
+	edge (M,L) was ignored
+	edge (O,P) was ignored
+	edge (O,Q) was ignored
+	edge (O,S) was ignored
+	edge (N,T) was ignored
+	edge (N,X) was ignored
+Cluster de cutpoints [12]14 
+~M: [3]: M N O 
+delete cutpoints edge (12-13)
+delete cutpoints edge (12-14)
+delete cutpoints edge (13-14)
+	edge (N,T) was ignored
+	edge (N,X) was ignored
+Cluster de cutpoints [13]16 
+discarded 13: [0]: 
+	edge (O,P) was ignored
+	edge (O,Q) was ignored
+	edge (O,S) was ignored
+Cluster de cutpoints [14]16 
+discarded 14: [0]: 
+
+Listing the 9 clusters:
+Y [2] A B 
+Z [7] A C E G H I J 
+[ [2] C D 
+\ [2] E F 
+] [3] J K M 
+^ [3] J L M 
+_ [3] M N O 
+` [6] N T U V W X 
+a [5] O P Q R S 
+
+ForestDupster: 
+(V E) = 19 18
+A Y
+A Z
+C Z
+C [
+E Z
+E \
+G Z
+H Z
+I Z
+J Z
+J ]
+J ^
+M ]
+M ^
+M _
+N _
+N `
+O _
+O a

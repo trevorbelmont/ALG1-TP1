@@ -3,14 +3,14 @@
     {
       "type": "shell",
       "label": "Compilar",
-      "command": "g++ tp1.cpp -o exe -g",
+      "command": "g++ _tarjan.cpp -o tarjan -g",
       "problemMatcher": [],
       "group": "build"
     },
     {
       "type": "shell",
       "label": "Executar",
-      "command": "./exe < _Mis*/input1.in",
+      "command": "./tarjan -a -v",
       "problemMatcher": [],
       "group": {
         "kind": "test",

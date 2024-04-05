@@ -32,7 +32,7 @@ void printSet(set<int> s, char separator, bool alfabetic = false, bool verbose =
     if (separator != '\n') cout << endl;  // evita uma quebra de linha a mais se JÁ ESTIVER SEPARANDO POR QUEBRAS DE LINHA
   }
 }
-
+/*
 bool isSubSet(set<int> s, set<set<int>> sets) {
   bool subSet = false;
   for (set super : sets) {
@@ -52,6 +52,7 @@ bool isSubSet(set<int> s, set<set<int>> sets) {
   return subSet;
 }
 
+ */
 // O TAD do Grafo
 struct Vertex {
   int id;
@@ -120,8 +121,9 @@ class Graph {
 
   // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
   // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
-  set<int>* dfsComponent(int w, int parent, bool clustered[], set<int>* component = nullptr) {
+  set<int>* dfsComponent(int w, int parent, bool clustered[], set<int>* component = nullptr, set<int>* lows = nullptr) {
     clustered[w] = true;
+
     component->insert(w);
 
     for (int u : v[w].adj) {
@@ -134,28 +136,48 @@ class Graph {
         }
 
         else if (v[u].isCutpoint == true) {
-          if (component != nullptr) {
-            int tanoset = 0;
-            for (int s : *component) {
-              if (v[u].adj.count(s) && s != w) {
-                tanoset++;
-              }
-            }
-            component->insert(u);
-            clustered[u] == true;
-          }
+          component->insert(u);
+          // clustered[u] == true;
+          continue;
         }
       }
-      if (v[w].isCutpoint) {
-        // ¬¬ !clustered[u] ??
-        if (clustered[u] == false && v[u].isCutpoint) {
-          dfsComponent(u, w, clustered, component);
-        }
+      // caso de estar num cutpoint (começou cutpoint)
+      if (v[w].isCutpoint) {  // erro provavelmente aqui ¬¬¬
 
+        if (lows == nullptr) lows = new set<int>;  // uma component biconexa possui no máximo 2 lows em todos seus vértices.
+        lows->insert(min[w]);
+        //  ¬¬ !clustered[u] ??
+        if (clustered[u] == false && v[u].isCutpoint) {
+          if ((lows->count(min[u]) || lows->count(u)) || lows->size() < 2) {
+            if (component->count(u)) component->insert(-7);  // pra mostar que há ciclo no grafo de bordas
+            dfsComponent(u, w, clustered, component, lows);
+          }
+        }
         // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
         if (v[u].isCutpoint == false) {
-          if (VERBOSE) cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl;
+          if (VERBOSE) {
+            (ALFABETICAL) ? cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl : cout << '\t' << "edge (" << (w + 1) << "," << (u + 1) << ") was ignored" << endl;
+          }
           continue;  // checa próximo vizinho
+        }
+      }
+    }
+    if (v[w].isCutpoint && parent == -1 && lows != nullptr) {
+      cout << "Lows de cutpoints [" << w << "]:  ";
+      printSet(*lows, ' ');
+
+      // se o cluster de bordas não tiver ciclo (-7) e for maior que 2 não é um cluster válido
+      if (component->count(-7) == 0 && component->size() >= 3) {  // count(-7) mostra que tem no mínimo um ciclo
+        if (VERBOSE) {
+          cout << "Não válido: ";
+          printSet(*component, ' ', ALFABETICAL, VERBOSE);
+          component->clear();
+        } else {
+          if (VERBOSE) {
+            cout << "Component Válida: ";
+            printSet(*component, ' ', ALFABETICAL, VERBOSE);
+            component->erase(-7);
+          }
         }
       }
     }
@@ -198,18 +220,24 @@ class Graph {
         set<int> temp = getComponent(x, clusteredExplored);
         if (temp.size() > 1) {  // "vértices isoladoss não são clusters"
           if (VERBOSE) {
-            cout << char(x + 65) << ": ";
+            (ALFABETICAL) ? cout << char(x + 65) << ": " : cout << (x + 1) << ": ";
             printSet(temp, ' ', ALFABETICAL, VERBOSE);
           }
 
+          // remove arestas ligando cutpoints de clusters com algum vértices interno
+          // Evita ambiguidade de arestas na hora de checar os cutpoint-clusters
           for (int x : temp) {
             if (v[x].isCutpoint) {
               for (int y : temp) {
                 if (x == y) continue;
-                if (v[y].isCutpoint) {
+
+                // Se ambos são cutpoints e estão no cluster e há uma aresta entre eles remove a aresta (não é necessária +)
+                if (v[y].isCutpoint && v[y].adj.count(x)) {
                   v[x].adj.erase(y);
                   v[y].adj.erase(x);
-                  if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
+                  if (VERBOSE) {
+                    (ALFABETICAL) ? cout << "delete edge (" << char(x + 65) << "-" << char(y + 65) << ")" << endl : cout << "delete edge (" << x << "-" << y << ")" << endl;
+                  }
                 }
               }
             }
@@ -226,20 +254,40 @@ class Graph {
     }
 
     for (int x : cutPoints) {
+      for (int cut : cutPoints) {
+        clusteredExplored[cut] = false;
+      }
       set<int> temp = getComponent(x, clusteredExplored);
       if (temp.size() > 1) {
-        if (true) {  // if (!isSubSet(temp, allClusters)) {  // ¬¬ muito pesadot
-          if (VERBOSE) {
-            cout << '~' << char(x + 65) << ": ";
-            printSet(temp, ' ', ALFABETICAL, VERBOSE);
-          }
-          allClusters.insert(temp);
-        } else if (VERBOSE) {
-          cout << "discarded " << x << ": ";
+        // if (true) {  // if (!isSubSet(temp, allClusters)) {  // ¬¬ muito pesadot
+        if (VERBOSE) {
+          (ALFABETICAL) ? cout << '~' << char(x + 65) << ": " : cout << '~' << x + 1 << ": ";
           printSet(temp, ' ', ALFABETICAL, VERBOSE);
         }
+
+        // Apaga arestas presentes num cluster de bordas
+        for (int x : temp) {
+          for (int y : temp) {
+            if (x == y) continue;
+
+            // Sabemos que são cutpoints. Se houver aresta entre eles, remove-a (para evitar ambiguidades)
+            if (v[x].adj.count(y)) {
+              v[x].adj.erase(y);
+              v[y].adj.erase(x);
+              if (VERBOSE) {
+                (ALFABETICAL) ? cout << "delete cutpoints edge (" << char(x + 65) << "-" << char(y + 65) << ")" << endl : cout << "delete cutpoints edge (" << x << "-" << y << ")" << endl;
+              }
+            }
+          }
+        }
+        // adiciona o cluster de borda
+        allClusters.insert(temp);
+      } else if (VERBOSE) {
+        cout << "discarded " << x << ": ";
+        printSet(temp, ' ', ALFABETICAL, VERBOSE);
       }
     }
+
     return allClusters;
   }
 
@@ -334,6 +382,12 @@ void ForestDump(set<set<int>> allClusters, set<int> cutpoints, int sizeOfGraph) 
         }
         clustId++;
       }
+    }
+  } else {  // o grafo não possui cutpoints (1 cluster só)
+    if (ALFABETICAL) {
+      cout << char(65 + (sizeOfGraph + 1)) << endl;  // Grafo com letras
+    } else {
+      cout << (sizeOfGraph + 1) << endl;
     }
   }
 }
