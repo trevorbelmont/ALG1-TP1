@@ -1,6 +1,8 @@
 #include <iostream>
 #include <set>
+#include <utility>
 #include <vector>
+
 // ¬¬ por enquanto assumimos que 'A' = 0ª letra do alfabeto (sem offsets)
 // ¬¬ Relações de low dos internos tendem a ser igual ao tempo de entrada do cluster (ou todos os lows são iguais - no caso do cluster que contem o root)
 // ¬¬ Avaliando clusters formados por cutpoints, apenas são cutpoints-de-cutpoints vertex(cutpoints) que não são vizinhos de vértices internos (?)
@@ -134,9 +136,16 @@ class Graph {
         }
 
         else if (v[u].isCutpoint == true) {
-          component->insert(u);
-          clustered[u] == true;
-          continue;
+          if (component != nullptr) {
+            int tanoset = 0;
+            for (int s : *component) {
+              if (v[u].adj.count(s) && s != w) {
+                tanoset++;
+              }
+            }
+            component->insert(u);
+            clustered[u] == true;
+          }
         }
       }
       if (v[w].isCutpoint) {
@@ -302,33 +311,42 @@ Graph loadGraph() {
 }
 
 // Um gerador de Floresta Clusters-Bordas que retorna um Grafo
-void ForestDump(set<set<int>> allClusters, set<int> cutpoints, int sizeOfGraph) {
+pair<int, string> ForestDump(set<set<int>> allClusters, set<int> cutpoints, int sizeOfGraph) {
   if (VERBOSE) {
     cout << endl;
     cout << "ForestDupster: " << endl;
     cout << "(V E) = ";
   }
+  string foresting = "";
+  int nEdges = 0;
 
-  int vertexCount, edgeCount;  // número de vértices e arestas do grafo condensado (Floresta Cluster-Bordas)
-  vertexCount = (allClusters.size() + cutpoints.size());
-  edgeCount = vertexCount - 1;
-  cout << vertexCount << ' ' << edgeCount << endl;
+  // int vertexCount, edgeCount;  // número de vértices e arestas do grafo condensado (Floresta Cluster-Bordas)
+  // vertexCount = (allClusters.size() + cutpoints.size());
+  // cout << vertexCount << ' ' << edgeCount << endl;
 
   if (!cutpoints.empty()) {  // se o grafo possui cutpoints (mais que um cluster)
     for (int cp : cutpoints) {
       int clustId = 0;
       for (set<int> cluster : allClusters) {
         if (cluster.find(cp) != cluster.end()) {  // se cp pertence ao cluster
+          nEdges++;
           if (ALFABETICAL) {
-            cout << char(cp + 65) << " " << char(65 + (clustId + sizeOfGraph)) << endl;  // Grafo com letras
+            string s = "";
+            s.append(1, char(cp + 65));
+            // cout << c << s;
+
+            foresting += s + " " + char(65 + (clustId + sizeOfGraph)) + '\n';
+
           } else {
-            cout << (cp + 1) << " " << ((clustId + sizeOfGraph + 1)) << endl;
+            foresting += to_string(cp + 1) + " " + to_string(clustId + sizeOfGraph + 1) + '\n';
           }
         }
         clustId++;
       }
     }
   }
+  pair<int, string> res(nEdges, foresting);
+  return res;
 }
 
 int main(int charc, char** charv) {
@@ -401,5 +419,8 @@ int main(int charc, char** charv) {
     id++;
   }
 
-  ForestDump(clusters, *cp, G.size);
+  pair<int, string> forest = ForestDump(clusters, *cp, G.size);
+  int nForest = clusters.size() + cp->size();
+  cout << nForest << ' ' << forest.first << endl;
+  cout << forest.second;
 }
