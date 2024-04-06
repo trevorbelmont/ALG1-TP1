@@ -135,17 +135,9 @@ class Graph {
           dfsComponent(u, w, clustered, component);
         }
 
-        else if (v[u].isCutpoint == true) {
-          if (component != nullptr) {
-            int tanoset = 0;
-            for (int s : *component) {
-              if (v[u].adj.count(s) && s != w) {
-                tanoset++;
-              }
-            }
-            component->insert(u);
-            clustered[u] == true;
-          }
+        else if (v[u].isCutpoint == true) {  // if achou cutpoint coloca no component mas não roda dfs dele ainda
+          component->insert(u);
+          clustered[u] == true;
         }
       }
       if (v[w].isCutpoint) {
@@ -164,6 +156,101 @@ class Graph {
     return component;
   }
 
+  // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
+  // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
+  set<int>* dfsComponent2(int w, int parent, bool clustered[], set<int>* component = nullptr, set<int>* lows = nullptr) {
+    clustered[w] = true;
+    component->insert(w);
+
+    if (lows == nullptr) {  // ou parent == -1
+      lows = new set<int>;
+    }
+
+    for (int u : v[w].adj) {
+      if (u == parent) {
+        continue;
+      }
+
+      // se atualmente não está num cutpoint
+      if (!v[w].isCutpoint) {
+        if (clustered[u] == false && v[u].isCutpoint == false) {  // se o vizinho do w (atual) não foi visitado e não é cutpoint
+          if (lows->empty()) lows->insert(min[w]);
+          lows->insert(min[u]);
+
+          dfsComponent2(u, w, clustered, component, lows);
+        }
+
+        else if (v[u].isCutpoint == true) {  // se o vizinho é cutpoint
+          int nLows = lows->size();
+          switch (nLows) {
+            case 0:
+              // lows->insert(min[u]); // não adiciona ainda. só adiciona se voltar (lows.size >= 1)
+              lows->insert(min[w]);
+              component->insert(u);
+              // dfsComponent(u, w, clustered, component, lows);
+              break;
+            case 1:
+              lows->insert(min[u]);
+              dfsComponent2(u, w, clustered, component, lows);
+            case 2:
+              if (lows->count(min[u])) {  // só continua dfs no vértice se tiver low previsto (lista de lows já é igual a 2)
+                dfsComponent2(u, w, clustered, component, lows);
+              }
+
+            default:
+              if (VERBOSE) {
+                cout << "!lows overflow em :  " << w + 1 << " cheking " << u + 1 << "  min[u] = " << min[u] << endl;
+                cout << "set : ";
+                printSet(*component, ' ', ALFABETICAL, VERBOSE);
+                cout << "size of lows: " << nLows << endl;
+              }
+              continue;
+              // exit(1);
+              break;
+          }
+        }
+      }
+
+      if (v[w].isCutpoint) {
+        // ¬¬ !clustered[u] ??
+        if (!v[u].isCutpoint && clustered[u] == false) {                                                // de um cutpoint acha um não cutpoint não explorado
+          if (lows != nullptr && lows->count(min[u])) dfsComponent2(u, w, clustered, component, lows);  // vai pra um vértice interno se o low foi previsto (independente do tamnho da lista lows)
+        }
+        if (v[u].isCutpoint) {        // de um cutpoint acha outro cutpoint
+          if (lows->count(min[u])) {  // faz parte da component (pela numerologia) (será que em todos os casos??
+            dfsComponent2(u, w, clustered, component, lows);
+          } else if (lows->size() < 2) {
+            lows->insert(min[u]);
+            dfsComponent2(u, w, clustered, component, lows);
+          }
+        }
+
+        // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
+        if (v[u].isCutpoint == false) {
+          if (VERBOSE) cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl;
+          continue;  // checa próximo vizinho
+        }
+      }
+    }
+
+    // Checar se o cluster é inválido (pelo número de lows)
+    return component;
+  }
+
+  bool isBiconnected(set<int> compCandidate) {
+    for (int i : compCandidate) {
+      int grau = 0;
+      for (int j : compCandidate) {
+        if (v[i].adj.count(j)) {
+          grau++;
+        }
+      }
+      if (grau < 2) return false;
+      // qualquer vértice do candidato que não não tiver no mínimo grau 2 torna a canditada não biconexa entre si.
+    }
+    return true;  // passou por todas os vértices e encontoru biconectividade em todos
+  }
+
   set<int> getComponent(int x, bool* clusteredExplored) {
     set<int>* clusterComponent = new set<int>;
 
@@ -173,11 +260,19 @@ class Graph {
       set<int> empty;
       return empty;
     }
+    // caso de retornar da dfsComponent1 com ver. interno "preso" entre dois cutpoints
+    else if (clusterComponent->size() == 3) {
+      if (!isBiconnected(*clusterComponent)) { // CHECA BICONECTIVIDADE.Se não for, apaga
+        cout << "Não é uma component biconexa: -> ";
+        printSet(*clusterComponent, ' ', ALFABETICAL, VERBOSE);
+        clusterComponent->clear();
+      }
+    }
     set<int> comp = *(clusterComponent);
     return comp;
   }
 
-  // Retorna
+  // Retorna as Componenents biconexas do grafo
   set<set<int>> getComponents(set<int> cutPoints) {
     bool clusteredExplored[size];
     set<int> notCutPoint;  // conjunto de veŕtices de G que não é borda/CutPoint/vértice de corte

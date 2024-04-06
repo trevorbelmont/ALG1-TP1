@@ -135,17 +135,10 @@ class Graph {
           dfsComponent(u, w, clustered, component);
         }
 
-        else if (v[u].isCutpoint == true) {
-          if (component != nullptr) {
-            int tanoset = 0;
-            for (int s : *component) {
-              if (v[u].adj.count(s) && s != w) {
-                tanoset++;
-              }
-            }
+        else if (v[u].isCutpoint == true) { // if achou cutpoint coloca no component mas não roda dfs dele
             component->insert(u);
             clustered[u] == true;
-          }
+          
         }
       }
       if (v[w].isCutpoint) {
