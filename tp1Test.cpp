@@ -137,13 +137,19 @@ class Graph {
 
         else if (v[u].isCutpoint == true) {  // if achou cutpoint coloca no component mas não roda dfs dele ainda
           component->insert(u);
-          clustered[u] == true;
+          // clustered[u] == true;
         }
       }
       if (v[w].isCutpoint) {
         // ¬¬ !clustered[u] ??
         if (clustered[u] == false && v[u].isCutpoint) {
-          dfsComponent(u, w, clustered, component);
+          dfsComponent(u, w, clustered, component);  // ¬¬¬¬¬¬¬¬¬¬ só add um novo lowpoint se ele estiver conectado com os anteriores
+          // pode fazer uma lista e checar no final do if
+          if (!isBiconnected(*component)) {
+            component->erase(u);  // paleativo
+          }
+        } else {
+          cout << u + 1 << " :: " << clustered[u] << ' ' << v[u].isCutpoint << endl;
         }
 
         // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
@@ -238,22 +244,43 @@ class Graph {
   }
 
   bool isBiconnected(set<int> compCandidate) {
-    for (int i : compCandidate) {
-      int grau = 0;
-      for (int j : compCandidate) {
-        if (v[i].adj.count(j)) {
-          grau++;
-        }
+    if (compCandidate.size() == 1) return false;
+    if (compCandidate.size() == 2) {
+      if (VERBOSE) {
+        cout << "     Set de tamanho 2 retornando true. Set -> ";
+        printSet(compCandidate, '*', ALFABETICAL, VERBOSE);
       }
-      if (grau < 2) return false;
-      // qualquer vértice do candidato que não não tiver no mínimo grau 2 torna a canditada não biconexa entre si.
+      return true;
+    }
+
+    // Para candidatos a cluster com size >=3 checamos se todos os vértices tem grau interno de pelo menos 2.
+    if (compCandidate.size() >= 3) {  // o caso que mais será utilizado
+      for (int i : compCandidate) {
+        int grau = 0;
+        for (int j : compCandidate) {
+          if (v[i].adj.count(j)) {
+            grau++;
+          }
+        }
+        if (grau < 2) {
+          if (VERBOSE) {
+            string qual = "";
+            (ALFABETICAL) ? qual.append(1, char(65 + i)) : qual += to_string(i + 1);
+            cout << "Não é uma component biconexa   (erro em    v[" << qual << "]   ): -> ";
+            printSet(compCandidate, ' ', ALFABETICAL, VERBOSE);
+          }
+          return false;
+        }
+        // qualquer vértice do candidato que não não tiver no mínimo grau 2 torna a canditada não biconexa entre si.
+      }
     }
     return true;  // passou por todas os vértices e encontoru biconectividade em todos
   }
 
   set<int> getComponent(int x, bool* clusteredExplored) {
     set<int>* clusterComponent = new set<int>;
-
+    cout << "getComponent " << x + 1 << " :";
+    printSet(v[x].adj, ' ');
     clusterComponent = dfsComponent(x, -1, clusteredExplored, clusterComponent);
 
     if (clusterComponent->size() <= 1) {  // "Links Isolados não fazem parte de nenhum cluster"
@@ -262,9 +289,7 @@ class Graph {
     }
     // caso de retornar da dfsComponent1 com ver. interno "preso" entre dois cutpoints
     else if (clusterComponent->size() == 3) {
-      if (!isBiconnected(*clusterComponent)) { // CHECA BICONECTIVIDADE.Se não for, apaga
-        cout << "Não é uma component biconexa: -> ";
-        printSet(*clusterComponent, ' ', ALFABETICAL, VERBOSE);
+      if (!isBiconnected(*clusterComponent)) {  // CHECA BICONECTIVIDADE.Se não for, apaga
         clusterComponent->clear();
       }
     }
@@ -299,35 +324,42 @@ class Graph {
             printSet(temp, ' ', ALFABETICAL, VERBOSE);
           }
 
+          // apaga arestas de clusters válidos já prontos:
           for (int x : temp) {
-            if (v[x].isCutpoint) {
-              for (int y : temp) {
-                if (x == y) continue;
-                if (v[y].isCutpoint) {
-                  v[x].adj.erase(y);
-                  v[y].adj.erase(x);
-                  if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
-                }
+            for (int y : temp) {
+              if (x == y) continue;
+              if (v[y].adj.count(x)) {
+                v[x].adj.erase(y);
+                v[y].adj.erase(x);
+                if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
               }
             }
           }
+
           allClusters.insert(temp);
         }
       }
     }
 
+    cout << endl
+         << endl
+         << "cutpoints: " << endl
+         << endl;
     // Agora que identificamos todos clusters que possuem no mínimo um não-cutpoint (e marcamos os vértices visistados)
     // Identificaremos os clusters que são formados apenas por cutpoints (bordas)
-    for (int x : cutPoints) {
-      clusteredExplored[x] = false;
-    }
 
     for (int x : cutPoints) {
+      for (int x : cutPoints) {
+        clusteredExplored[x] = false;
+      }
+
       set<int> temp = getComponent(x, clusteredExplored);
       if (temp.size() > 1) {
         if (true) {  // if (!isSubSet(temp, allClusters)) {  // ¬¬ muito pesadot
           if (VERBOSE) {
-            cout << '~' << char(x + 65) << ": ";
+            cout << '~';
+            (ALFABETICAL) ? cout << char(x + 65) : cout << (x + 1);
+            cout << ": ";
             printSet(temp, ' ', ALFABETICAL, VERBOSE);
           }
           allClusters.insert(temp);
@@ -336,7 +368,19 @@ class Graph {
           printSet(temp, ' ', ALFABETICAL, VERBOSE);
         }
       }
+      // apaga arestas de clusters válidos já prontos:
+      for (int x : temp) {
+        for (int y : temp) {
+          if (x == y) continue;
+          if (v[y].adj.count(x)) {
+            v[x].adj.erase(y);
+            v[y].adj.erase(x);
+            if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
+          }
+        }
+      }
     }
+
     return allClusters;
   }
 
