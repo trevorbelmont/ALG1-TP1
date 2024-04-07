@@ -1,5 +1,9 @@
+#include <stdio.h>
+#include <string.h>
+
 #include <iostream>
 #include <set>
+#include <stack>
 #include <utility>
 #include <vector>
 
@@ -16,6 +20,10 @@
 */
 using namespace std;
 
+stack<int> S;
+vector<vector<int>> components;
+int timeStamp;
+
 bool ALFABETICAL = false;
 bool VERBOSE = false;
 int ROOT1STDFS = 0;
@@ -29,36 +37,18 @@ void printSet(set<int> s, char separator, bool alfabetic = false, bool verbose =
     if (separator != '\n') cout << endl;  // evita uma quebra de linha a mais se JÁ ESTIVER SEPARANDO POR QUEBRAS DE LINHA
   } else {
     for (int i : s) {
-      cout << (i + 1) << separator;
+      printf("%d%c", (i + 1), separator);
+      // cout << (i + 1) << separator;
     }
     if (separator != '\n') cout << endl;  // evita uma quebra de linha a mais se JÁ ESTIVER SEPARANDO POR QUEBRAS DE LINHA
   }
 }
-
-bool isSubSet(set<int> s, set<set<int>> sets) {
-  bool subSet = false;
-  for (set super : sets) {
-    int intersect = 0;
-    if (super.size() < 2) {
-      continue;
-    }
-    for (int x : s) {
-      if (super.count(x)) {  // ¬¬
-        intersect++;
-      }
-      if (intersect >= 2) {
-        return true;
-      }
-    }
-  }
-  return subSet;
-}
-
 // O TAD do Grafo
 struct Vertex {
   int id;
   bool isCutpoint;
   set<int> adj;  // lista de adjacências
+  int parent;
 };
 
 class Graph {
@@ -66,7 +56,7 @@ class Graph {
   int size;
   Vertex* v;
 
-  vector<bool> explored;
+  vector<int> explored;
   vector<int> open, min;  // open = tempo de entrada (abertura na pilha), min = min(open[v],open[vizinhos de v])
   // Em outras palavras: min de um vértice   é o mínimo entre os tempos de abertura de um vértice e seus vizinhos (recursivamente)
 
@@ -77,13 +67,24 @@ class Graph {
     for (int i = 0; i < size; i++) {
       v[i].id = i;
       v[i].isCutpoint = false;
+      v[i].parent = -1;
     }
     // Inicializa todas as variáveis auxiliares
-    explored.assign(size, false);
+    explored.assign(size, 0);
     open.assign(size, -1);
     min.assign(size, -1);
   }
-
+  void reset() {
+    for (int i = 0; i < size; i++) {
+      v[i].id = i;
+      v[i].isCutpoint = false;
+      v[i].parent = -1;
+    }
+    // Inicializa todas as variáveis auxiliares
+    explored.assign(size, 0);
+    open.assign(size, -1);
+    min.assign(size, -1);
+  }
   // Cria arestas na lista de adjacência que representa o grafo (função redundante dado que o o é um grafo não direcionado)
   bool makeEdge(int a, int b) {
     if ((a >= 0 && a < size) && (b >= 0 && b < size)) {  // o enunciado do TP não permite a = b
@@ -107,7 +108,8 @@ class Graph {
         for (int x : v[i].adj) {  // imprime a lista de adjacência com letras
           cout << ' ' << char(65 + x);
         }
-        cout << "  ~(" << min[i] << ")" << endl;
+        cout << "  ~(" << min[i] << ")    "
+             << "par=" << char(65 + v[i].parent) << endl;
       }
     } else if (alfabetic == false) {
       for (int i = 0; i < size; i++) {  // para cada vértice do grafo
@@ -115,143 +117,110 @@ class Graph {
         for (int x : v[i].adj) {  // imprime a lista de adjacência com letras
           cout << ' ' << x + 1;
         }
-        cout << "  ~(" << min[i] << ")" << endl;
+        cout << "  ~(" << min[i] << ")"
+             << "par=" << v[i].parent << endl;
       }
     }
   }
 
-  // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
-  // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
-  set<int>* dfsComponent(int w, int parent, bool clustered[], set<int>* component = nullptr) {
-    clustered[w] = true;
-    component->insert(w);
+  // Retorna um set contendo os cutpoints do grafo
+  set<int> dfs(int w, int parent, int& t, set<int>& cutSet) {
+    // Baseado no Algoritmo de consiguir cutpoints da site cp-algorithm
+
+    explored[w] = true;
+    open[w] = min[w] = t++;  // inicialmente min[w] = ao tempo de abertura (open) de w
+    int children = 0;
 
     for (int u : v[w].adj) {
-      if (u == parent) {
-        continue;
+      if (u == parent) continue;                          // se a aresta volta pro pai, ignora.
+      if (explored[u] == true) {                          // se o vizinho já foi visitado na DFS (aresta de retorno)
+        min[w] = (min[w] <= open[u]) ? min[w] : open[u];  // min[w] = mínimo(min[w], open[u])
       }
-      if (!v[w].isCutpoint) {
-        if (clustered[u] == false && v[u].isCutpoint == false) {
-          dfsComponent(u, w, clustered, component);
-        }
 
-        else if (v[u].isCutpoint == true) {  // if achou cutpoint coloca no component mas não roda dfs dele ainda
-          component->insert(u);
-          // clustered[u] == true;
-        }
-      }
-      if (v[w].isCutpoint) {
-        // ¬¬ !clustered[u] ??
-        if (clustered[u] == false && v[u].isCutpoint) {
-          dfsComponent(u, w, clustered, component);  // ¬¬¬¬¬¬¬¬¬¬ só add um novo lowpoint se ele estiver conectado com os anteriores
-          // pode fazer uma lista e checar no final do if
-          if (!isBiconnected(*component)) {
-            component->erase(u);
-            clustered[u] = false;  // paleativo
-          }
-        }
+      else {                                            // se o vizinho ainda não foi visitado
+        dfs(u, w, t, cutSet);                           // Chama DFS do vizinho não explorado
+        min[w] = (min[w] <= min[u]) ? min[w] : min[u];  // se min de w é menor que de seus descendentes na DFSTree permanece
+                                                        // caso o contário o min w passa a ser o min de seu descendente
 
-        // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
-        if (v[u].isCutpoint == false) {
-          if (VERBOSE) cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl;
-          continue;  // checa próximo vizinho
+        // se o min (vertex de retorno mínimo) do vizinho u é menor que o mínimo do vertex w(atual), w é cutpoint.
+        if (min[u] >= open[w] && parent != -1) {
+          if (VERBOSE) cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
+          cutSet.insert(w);
+          v[w].isCutpoint = true;
         }
+        children++;
       }
     }
-    return component;
+    if (parent == -1 && children > 1) {  // se é o vértice raiz da DFS e tem mais que um filho
+      cutSet.insert(w);
+      v[w].isCutpoint = true;
+      if (VERBOSE) cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
+    }
+    t++;
+    return cutSet;
   }
 
-  // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
-  // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada // pega casos brabos mas é instável
-  set<int>* dfsComponent2(int w, int parent, bool clustered[], set<int>* component = nullptr, set<int>* lows = nullptr) {
-    clustered[w] = true;
-    if (component == nullptr) component = new set<int>;
-    component->insert(w);
-
-    if (lows == nullptr) {  // ou parent == -1
-      lows = new set<int>;
+  // Baseado no algoritmo de Robert Endre Tarjan como exposto em : https://iq.opengenus.org/biconnected-components/
+  set<set<int>> tarjan(set<set<int>>& allClusters, int w, set<int>& cutpoints, stack<int>& pilha, int time = -1) {
+    if (time == -1) {
+      v[w].parent = -1;
     }
 
+    explored[w] = 1;            // Colore de explorando (1)
+    min[w] = open[w] = ++time;  // incrementa contador e depois assinala.
+    pilha.push(w);
+    int children_in_the_dfsTree = 0;  // contador de filhos na árvore da dfs (implementação do cp-algorithm)
+
+    // Olha pra vizinhança do vértice atual, w.
     for (int u : v[w].adj) {
-      if (u == parent) {
-        continue;
-      }
+      // Checa se u ainda não foi explorado ou não se está explorando
+      if (explored[u] == 0) {
+        v[u].parent = w + 1;
+        children_in_the_dfsTree++;
+        tarjan(allClusters, u, cutpoints, pilha, time);
+        min[w] = minimum(min[w], min[u]);
 
-      if (component->count(u)) {
-        continue;
-      }
+        if (min[u] >= open[w]) {  // Encontra Candidato a cutPoint
 
-      // se atualmente não está num cutpoint
-      if (!v[w].isCutpoint) {
-        if (clustered[u] == false && v[u].isCutpoint == false) {  // se o vizinho do w (atual) não foi visitado e não é cutpoint
-          if (lows->empty()) lows->insert(min[w]);
-          lows->insert(min[u]);
-
-          dfsComponent2(u, w, clustered, component, lows);
-        }
-
-        else if (v[u].isCutpoint == true) {  // se o vizinho é cutpoint
-          int nLows = lows->size();
-          switch (nLows) {
-            case 0:
-              // lows->insert(min[u]); // não adiciona ainda. só adiciona se voltar (lows.size >= 1)
-              lows->insert(min[w]);
-              lows->insert(min[u]);
-              component->insert(u);
-              // dfsComponent(u, w, clustered, component, lows);
-              break;
-            case 1:
-              lows->insert(min[u]);
-              lows->insert(min[w]);
-              dfsComponent2(u, w, clustered, component, lows);
-            case 2:
-              if (lows->count(min[u])) {  // só continua dfs no vértice se tiver low previsto (lista de lows já é igual a 2)
-                dfsComponent2(u, w, clustered, component, lows);
-              }
-
-            default:
-              if (VERBOSE) {
-                cout << "!lows overflow em :  " << w + 1 << " cheking " << u + 1 << "  min[u] = " << min[u] << endl;
-                cout << "set : ";
-                printSet(*component, ' ', ALFABETICAL, VERBOSE);
-                cout << "size of lows: " << nLows << endl;
-              }
-              continue;
-              // exit(1);
-              break;
+          // Garante que é Cutpoint (porém não é a raiz)
+          // o caso da raiz é tratado no fechamento do vértice)
+          if (v[w].parent > -1) {
+            cutpoints.insert(w);
+            v[w].isCutpoint = true;
           }
-        }
-      }
+          set<int> cluster;
+          int vertex;
 
-      if (v[w].isCutpoint) {
-        // ¬¬ !clustered[u] ??
-        if (!v[u].isCutpoint) {  // de um cutpoint acha um não cutpoint não explorado
-          if (lows != nullptr && lows->count(min[u])) {
-            dfsComponent2(u, w, clustered, component, lows);  // vai pra um vértice interno se o low foi previsto (independente do tamnho da lista lows)
-          } else if (lows->size() <= 1) {
-            if (VERBOSE) {
-              lows->insert(min[u]);
-              lows->insert(min[w]);
-              cout << w + 1 << '-' << u + 1 << "  Lows: ";
-              printSet(*lows, ' ');
-            }
-            dfsComponent2(u, w, clustered, component, lows);
-          }
+          // Antes de sair do vértice adicona os vértices visitados ao component
+          do {
+            vertex = pilha.top();
+            pilha.pop();
+
+            cluster.insert(vertex);
+          } while (vertex != u);
+
+          cluster.insert(w);
+          allClusters.insert(cluster);
         }
-        if (v[u].isCutpoint) {        // de um cutpoint acha outro cutpoint
-          if (lows->count(min[u])) {  // faz parte da component (pela numerologia) (será que em todos os casos??
-            dfsComponent2(u, w, clustered, component, lows);
-          } else if (lows->size() < 2) {
-            lows->insert(min[u]);
-            dfsComponent2(u, w, clustered, component, lows);
-          }
-        }
+      } else if (u != v[w].parent) {
+        min[w] = minimum(min[w], open[u]);
       }
     }
-    /* cout << " comp: ";
-    printSet(*component, ' ');
-    // Checar se o cluster é inválido (pelo número de lows) */
-    return component;
+    if (v[w].parent == -1 && children_in_the_dfsTree >= 2) {
+      v[w].isCutpoint = true;
+      cutpoints.insert(w);
+    }
+
+    explored[w] = 2;  // Colore de já explorado (2) quando fecha o vértice
+    return allClusters;
+  }
+
+  int minimum(int a, int b) {
+    if (a < b) {
+      return a;
+    } else {
+      return b;
+    }
   }
 
   bool isBiconnected(set<int> compCandidate) {
@@ -287,207 +256,13 @@ class Graph {
     }
     return true;  // passou por todas os vértices e encontoru biconectividade em todos
   }
-
-  set<int> getComponent(int x, bool* clusteredExplored) {
-    set<int>* clusterComponent = new set<int>;
-
-    clusterComponent = dfsComponent(x, -1, clusteredExplored, clusterComponent);
-
-    if (clusterComponent->size() <= 1) {  // "Links Isolados não fazem parte de nenhum cluster"
-      set<int> empty;
-      return empty;
-    }
-    // caso de retornar da dfsComponent1 com ver. interno "preso" entre dois cutpoints
-    else if (clusterComponent->size() == 3) {
-      if (!isBiconnected(*clusterComponent)) {  // CHECA BICONECTIVIDADE.Se não for, apaga
-        clusterComponent->clear();
-      }
-    }
-    set<int> comp = *(clusterComponent);
-    return comp;
-  }
-
-  // Retorna as Componenents biconexas do grafo
-  set<set<int>> getComponents(set<int> cutPoints) {
-    bool clusteredExplored[size];
-    set<int> notCutPoint;  // conjunto de veŕtices de G que não é borda/CutPoint/vértice de corte
-    // prepara nova DFS (com ciência dos cutpoints)
-    for (int i = 0; i < size; i++) {
-      clusteredExplored[i] = false;
-
-      if (v[i].isCutpoint == false) {  // Só adciona vértices que não são cutpoints
-        notCutPoint.insert(i);
-      }
-    }
-    //
-    set<set<int>> allClusters;
-
-    // primeiro identifica os clusters a partir dos vértices que não são cutpoints.
-    // Os vértices visitados na dfsComponent são marcados como explorados
-    for (int x : notCutPoint) {
-      // evita que tente identificar o mesmo cluster mais que uma vez
-      if (clusteredExplored[x] == false) {  // portanto, só roda dfsComponent em não cutPoints ainda não explorados.
-        set<int> temp = getComponent(x, clusteredExplored);
-        if (temp.size() > 1) {  // "vértices isoladoss não são clusters"
-          if (VERBOSE) {
-            cout << char(x + 65) << ": ";
-            printSet(temp, ' ', ALFABETICAL, VERBOSE);
-          }
-
-          // apaga arestas de clusters válidos já prontos:
-          for (int x : temp) {
-            for (int y : temp) {
-              if (x == y) continue;
-              if (v[y].adj.count(x)) {
-                v[x].adj.erase(y);
-                v[y].adj.erase(x);
-                if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
-              }
-            }
-          }
-
-          allClusters.insert(temp);
-        }
-      }
-    }
-    // Identificaremos os clusters que são formados apenas por cutpoints (bordas)
-
-    for (int x : cutPoints) {
-      for (int x : cutPoints) {
-        clusteredExplored[x] = false;
-      }
-
-      set<int> temp = getComponent(x, clusteredExplored);
-      if (temp.size() > 1) {
-        if (true) {  // if (!isSubSet(temp, allClusters)) {  // ¬¬ muito pesadot
-          if (VERBOSE) {
-            cout << '~';
-            (ALFABETICAL) ? cout << char(x + 65) : cout << (x + 1);
-            cout << ": ";
-            printSet(temp, ' ', ALFABETICAL, VERBOSE);
-          }
-          allClusters.insert(temp);
-        } else if (VERBOSE) {
-          cout << "discarded " << x << ": ";
-          printSet(temp, ' ', ALFABETICAL, VERBOSE);
-        }
-      }
-      // apaga arestas de clusters válidos já prontos:
-      for (int x : temp) {
-        for (int y : temp) {
-          if (x == y) continue;
-          if (v[y].adj.count(x)) {
-            v[x].adj.erase(y);
-            v[y].adj.erase(x);
-            if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
-          }
-        }
-      }
-    }
-
-    if (VERBOSE) {
-      cout << endl
-           << " OS CASOS BRABOS (CLUSTER MISTOS, COM MAIS DE DOIS CUTPOINTS E VÉRTICES INTERNOS) :" << endl
-           << endl;
-
-      for (int i = 0; i < size; i++) {
-        cout << "v[" << i + 1 << "] = " << clusteredExplored[i] << endl;
-      }
-    }
-
-    for (int x : cutPoints) {
-      clusteredExplored[x] = false;
-    }
-
-    if (VERBOSE) {
-      cout << endl;
-      cout << "Grafo Depois das dfsComponent1 e antes da dfsComponent2 (pra pegar os casos brabos)" << endl;
-      print();
-      cout << endl;
-    }
-
-    if (VERBOSE) {
-      cout << "Começa checar os brabos a partir dos cutpoints" << endl;
-      cout << endl;
-    }
-
-    for (int i : cutPoints) {
-      set<int>* brabos = new set<int>;
-      if (v[i].adj.size() > 0) {
-        dfsComponent2(i, -1, clusteredExplored, brabos);
-        int valido = isBiconnected(*brabos);
-
-        if (VERBOSE) {
-          cout << "Brabo [" << i + 1 << "] (biconnected=" << valido << "): ";
-          if (brabos != nullptr) printSet(*brabos, ' ', ALFABETICAL, VERBOSE);
-        }
-        if (valido) {
-          for (int x : *brabos) {
-            for (int y : *brabos) {
-              if (x == y) continue;
-              if (v[y].adj.count(x)) {
-                v[x].adj.erase(y);
-                v[y].adj.erase(x);
-                if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
-              }
-            }
-          }
-          allClusters.insert(*brabos);
-        }
-      }
-    }
-
-    return allClusters;
-  }
-
-  set<int>*
-  dfs(int w, int parent, int& t, set<int>* cutSet = nullptr) {
-    set<int>* cutPoints;  // ||
-
-    if (t != 0) {
-      cutPoints = cutSet;
-    } else {
-      cutPoints = new set<int>;
-    }
-
-    explored[w] = true;
-    open[w] = min[w] = t++;  // inicialmente min[w] = ao tempo de abertura (open) de w
-    int children = 0;
-
-    for (int u : v[w].adj) {
-      if (u == parent) continue;                          // se a aresta volta pro pai, ignora.
-      if (explored[u] == true) {                          // se o vizinho já foi visitado na DFS (aresta de retorno)
-        min[w] = (min[w] <= open[u]) ? min[w] : open[u];  // min[w] = mínimo(min[w], open[u])
-      }
-
-      else {                                            // se o vizinho ainda não foi visitado
-        dfs(u, w, t, cutPoints);                        // Chama DFS do vizinho não explorado
-        min[w] = (min[w] <= min[u]) ? min[w] : min[u];  // se min de w é menor que de seus descendentes na DFSTree permanece
-                                                        // caso o contário o min w passa a ser o min de seu descendente
-
-        // se o min (vertex de retorno mínimo) do vizinho u é menor que o mínimo do vertex w(atual), w é cutpoint.
-        if (min[u] >= open[w] && parent != -1) {
-          if (VERBOSE) cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
-          cutPoints->insert(w);
-          v[w].isCutpoint = true;
-        }
-        children++;
-      }
-    }
-    if (parent == -1 && children > 1) {  // se é o vértice raiz da DFS e tem mais que um filho
-      cutPoints->insert(w);
-      v[w].isCutpoint = true;
-      if (VERBOSE) cout << " ============== IS c u t p o i n t (" << w << ") ============" << endl;
-    }
-    t++;
-    return cutPoints;
-  }
 };
 
 Graph loadGraph() {
   int N, M;
 
-  cin >> N >> M;
+  // cin >> N >> M;
+  scanf("%d %d", &N, &M);
 
   // se o limite o número de vértices for maior que o número de letras do alfabeto (maiúsculo) ¬
   // força o desligamento do verbose
@@ -499,7 +274,8 @@ Graph loadGraph() {
 
   int a, b;  // fora do loop?? ¬
   for (int i = 0; i < M; i++) {
-    cin >> a >> b;
+    scanf("%d %d", &a, &b);
+    // cin >> a >> b;
 
     G.makeEdge(a - 1, b - 1);
   }
@@ -573,24 +349,41 @@ int main(int charc, char** charv) {
 
   Graph G = loadGraph();
 
-  int t = 0;
-
   // checa se a dretriz de vértice original da 1ª DFS é um vértice válido
   ROOT1STDFS = (ROOT1STDFS < G.size) ? ROOT1STDFS : 0;
 
-  set<int>* cp = G.dfs(ROOT1STDFS, -1, t);
+  set<set<int>> clusters;
+  set<int> tarjanCps;
+  int t = -1;
+
+  // Se uma raíz não trivial (lexicográfica) foi selecionada, processa ela primeiro.
+  if (ROOT1STDFS != 0) {
+    stack<int> pilhaDeComponents;  // vazia
+    clusters = G.tarjan(clusters, ROOT1STDFS, tarjanCps, pilhaDeComponents, t);
+  }
+
+  // Faz DFS nos outros vértices em ordem lexicográfica
+  for (int i = -1; i < G.size; i++) {
+    if (G.open[i] == -1) {
+      stack<int> pilhaDeComponents;  // vazia
+      clusters = G.tarjan(clusters, i, tarjanCps, pilhaDeComponents, t);
+    }
+  }
 
   if (VERBOSE) {
     G.print(ALFABETICAL);
     cout << endl;
-    cout << "Listing the " << (*cp).size() << " CutPoints: ";
-    printSet(*cp, ' ', ALFABETICAL, true);
+    cout << "Listing the " << tarjanCps.size() << " CutPoints: ";
+    printSet(tarjanCps, ' ', ALFABETICAL, true);
   } else {
-    cout << cp->size() << endl;
-    printSet(*cp, '\n', ALFABETICAL, false);
+    t = 0;
+    G.reset();
+    set<int> cp;
+    G.dfs(ROOT1STDFS, -1, t, cp);
+    printf("%d\n",cp.size());
+    //cout << cp.size() << endl;
+    // printSet(tarjanCps, '\n', ALFABETICAL, false);
   }
-
-  set<set<int>> clusters = G.getComponents(*cp);
 
   if (VERBOSE) {
     cout << endl;
@@ -603,20 +396,23 @@ int main(int charc, char** charv) {
     if (ALFABETICAL) {
       cout << char((id + G.size) + 65) << ' ';
     } else {
-      cout << (id + G.size + 1) << ' ';
+      printf("%d ", (id + G.size + 1));
+      // cout << (id + G.size + 1) << ' ';
     }
 
     if (VERBOSE) {
       cout << '[' << s.size() << "] ";
     } else {
-      cout << s.size() << ' ';
+      printf("%d ", s.size());
+      // cout << s.size() << ' ';
     }
     printSet(s, ' ', ALFABETICAL);
     id++;
   }
 
-  pair<int, string> forest = ForestDump(clusters, *cp, G.size);
-  int nForest = clusters.size() + cp->size();
-  cout << nForest << ' ' << forest.first << endl;
-  cout << forest.second;
-}
+  pair<int, string> forest = ForestDump(clusters, tarjanCps, G.size);
+  int nForest = clusters.size() + tarjanCps.size();
+
+  printf("%d %d\n%s", nForest, forest.first, (forest.second).c_str());
+  /* cout << nForest << ' ' << forest.first << endl;
+  cout << forest.second;  */}

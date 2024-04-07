@@ -1,6 +1,5 @@
 #include <iostream>
 #include <set>
-#include <stack>
 #include <utility>
 #include <vector>
 
@@ -16,10 +15,6 @@
  http://graphonline.ru/pt/?graph=kIpBhNLISfetMSFC      ( scorpion )
 */
 using namespace std;
-
-stack<int> S;
-vector<vector<int>> components;
-int timeStamp;
 
 bool ALFABETICAL = false;
 bool VERBOSE = false;
@@ -39,12 +34,31 @@ void printSet(set<int> s, char separator, bool alfabetic = false, bool verbose =
     if (separator != '\n') cout << endl;  // evita uma quebra de linha a mais se JÁ ESTIVER SEPARANDO POR QUEBRAS DE LINHA
   }
 }
+
+bool isSubSet(set<int> s, set<set<int>> sets) {
+  bool subSet = false;
+  for (set super : sets) {
+    int intersect = 0;
+    if (super.size() < 2) {
+      continue;
+    }
+    for (int x : s) {
+      if (super.count(x)) {  // ¬¬
+        intersect++;
+      }
+      if (intersect >= 2) {
+        return true;
+      }
+    }
+  }
+  return subSet;
+}
+
 // O TAD do Grafo
 struct Vertex {
   int id;
   bool isCutpoint;
   set<int> adj;  // lista de adjacências
-  int parent;
 };
 
 class Graph {
@@ -52,7 +66,7 @@ class Graph {
   int size;
   Vertex* v;
 
-  vector<int> explored;
+  vector<bool> explored;
   vector<int> open, min;  // open = tempo de entrada (abertura na pilha), min = min(open[v],open[vizinhos de v])
   // Em outras palavras: min de um vértice   é o mínimo entre os tempos de abertura de um vértice e seus vizinhos (recursivamente)
 
@@ -63,22 +77,9 @@ class Graph {
     for (int i = 0; i < size; i++) {
       v[i].id = i;
       v[i].isCutpoint = false;
-      v[i].parent = -1;
     }
     // Inicializa todas as variáveis auxiliares
-    explored.assign(size, 0);
-    open.assign(size, -1);
-    min.assign(size, -1);
-  }
-
-  void reset() {
-    for (int i = 0; i < size; i++) {
-      v[i].id = i;
-      v[i].isCutpoint = false;
-      v[i].parent = -1;
-    }
-    // Inicializa todas as variáveis auxiliares
-    explored.assign(size, 0);
+    explored.assign(size, false);
     open.assign(size, -1);
     min.assign(size, -1);
   }
@@ -106,8 +107,7 @@ class Graph {
         for (int x : v[i].adj) {  // imprime a lista de adjacência com letras
           cout << ' ' << char(65 + x);
         }
-        cout << "  ~(" << min[i] << ")    "
-             << "par=" << char(65 + v[i].parent) << endl;
+        cout << "  ~(" << min[i] << ")" << endl;
       }
     } else if (alfabetic == false) {
       for (int i = 0; i < size; i++) {  // para cada vértice do grafo
@@ -115,13 +115,11 @@ class Graph {
         for (int x : v[i].adj) {  // imprime a lista de adjacência com letras
           cout << ' ' << x + 1;
         }
-        cout << "  ~(" << min[i] << ")"
-             << "par=" << v[i].parent << endl;
+        cout << "  ~(" << min[i] << ")" << endl;
       }
     }
   }
 
-  // Tentativa custosa (mais que uma dfs) em tese baseada no Tarjan-Hopcroft algorithm
   // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
   // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
   set<int>* dfsComponent(int w, int parent, bool clustered[], set<int>* component = nullptr) {
@@ -254,69 +252,6 @@ class Graph {
     printSet(*component, ' ');
     // Checar se o cluster é inválido (pelo número de lows) */
     return component;
-  }
-
-  // Baseado no algoritmo de Robert Endre Tarjan como exposto em : https://iq.opengenus.org/biconnected-components/
-  set<set<int>> tarjan(set<set<int>>& allClusters, int w, set<int>& cutpoints, stack<int>& pilha, int time = -1) {
-    if (time == -1) {
-      v[w].parent = -1;
-    }
-
-    explored[w] = 1;            // Colore de explorando (1)
-    min[w] = open[w] = ++time;  // incrementa contador e depois assinala.
-    pilha.push(w);
-    int children_in_the_dfsTree = 0;  // contador de filhos na árvore da dfs (implementação do cp-algorithm)
-
-    // Olha pra vizinhança do vértice atual, w.
-    for (int u : v[w].adj) {
-      // Checa se u ainda não foi explorado ou não se está explorando
-      if (explored[u] == 0) {
-        v[u].parent = w + 1;
-        children_in_the_dfsTree++;
-        tarjan(allClusters, u, cutpoints, pilha, time);
-        min[w] = minimum(min[w], min[u]);
-
-        if (min[u] >= open[w]) {  // Encontra Candidato a cutPoint
-
-          // Garante que é Cutpoint
-          if (v[w].parent > -1) {
-            cutpoints.insert(w);
-            v[w].isCutpoint = true;
-          }
-          set<int> cluster;
-          vector<int> component;
-          int vertex;
-
-          do {
-            vertex = pilha.top();
-            pilha.pop();
-            component.push_back(vertex);
-            cluster.insert(vertex);
-          } while (vertex != u);
-          component.push_back(w);
-          cluster.insert(w);
-          allClusters.insert(cluster);
-          components.push_back(component);
-        }
-      } else if (u != v[w].parent) {
-        min[w] = minimum(min[w], open[u]);
-      }
-    }
-    if (v[w].parent == -1 && children_in_the_dfsTree >= 2) {
-      v[w].isCutpoint = true;
-      cutpoints.insert(w);
-    }
-
-    explored[w] = 2;  // Colore de já explorado (2) quando fecha o vértice
-    return allClusters;
-  }
-
-  int minimum(int a, int b) {
-    if (a < b) {
-      return a;
-    } else {
-      return b;
-    }
   }
 
   bool isBiconnected(set<int> compCandidate) {
@@ -505,8 +440,7 @@ class Graph {
     return allClusters;
   }
 
-  set<int>*
-  dfs(int w, int parent, int& t, set<int>* cutSet = nullptr) {
+  set<int>*  dfs(int w, int parent, int& t, set<int>* cutSet = nullptr) {
     set<int>* cutPoints;  // ||
 
     if (t != 0) {
@@ -638,35 +572,24 @@ int main(int charc, char** charv) {
 
   Graph G = loadGraph();
 
+  int t = 0;
+
   // checa se a dretriz de vértice original da 1ª DFS é um vértice válido
   ROOT1STDFS = (ROOT1STDFS < G.size) ? ROOT1STDFS : 0;
 
-  set<set<int>> clusters;
-  set<int> tarjanCps;
-  int t = -1;
+  set<int>* cp = G.dfs(ROOT1STDFS, -1, t);
 
-  // Se uma raíz não trivial (lexicográfica) foi selecionada, processa ela primeiro.
-  if (ROOT1STDFS != 0) {
-    stack<int> pilhaDeComponents;  // vazia
-    clusters = G.tarjan(clusters, ROOT1STDFS, tarjanCps, pilhaDeComponents, t);
-  }
-
-  // Faz DFS nos outros vértices em ordem lexicográfica
-  for (int i = -1; i < G.size; i++) {
-    if (G.open[i] == -1) {
-      stack<int> pilhaDeComponents;  // vazia
-      clusters = G.tarjan(clusters, i, tarjanCps, pilhaDeComponents, t);
-    }
-  }
   if (VERBOSE) {
     G.print(ALFABETICAL);
     cout << endl;
-    cout << "Listing the " << tarjanCps.size() << " CutPoints: ";
-    printSet(tarjanCps, ' ', ALFABETICAL, true);
+    cout << "Listing the " << (*cp).size() << " CutPoints: ";
+    printSet(*cp, ' ', ALFABETICAL, true);
   } else {
-    cout << tarjanCps.size() << endl;
-    printSet(tarjanCps, '\n', ALFABETICAL, false);
+    cout << cp->size() << endl;
+    printSet(*cp, '\n', ALFABETICAL, false);
   }
+
+  set<set<int>> clusters = G.getComponents(*cp);
 
   if (VERBOSE) {
     cout << endl;
@@ -691,8 +614,8 @@ int main(int charc, char** charv) {
     id++;
   }
 
-  pair<int, string> forest = ForestDump(clusters, tarjanCps, G.size);
-  int nForest = clusters.size() + tarjanCps.size();
+  pair<int, string> forest = ForestDump(clusters, *cp, G.size);
+  int nForest = clusters.size() + cp->size();
   cout << nForest << ' ' << forest.first << endl;
   cout << forest.second;
 }
