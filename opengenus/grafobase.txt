@@ -1,0 +1,19 @@
+4 5                                                                             
+1 2                                                                             
+2 3
+3 4                                                                             
+1 4                                                                             
+4 2
+
+3 5
+
+// grafo base de um cluster só (erro na saída)
+saída:
+
+
+0                                                                               
+1                                                                               
+5 4 1 2 3 4                                                                     
+1 0        
+
+
