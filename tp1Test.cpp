@@ -146,10 +146,9 @@ class Graph {
           dfsComponent(u, w, clustered, component);  // ¬¬¬¬¬¬¬¬¬¬ só add um novo lowpoint se ele estiver conectado com os anteriores
           // pode fazer uma lista e checar no final do if
           if (!isBiconnected(*component)) {
-            component->erase(u);  // paleativo
+            component->erase(u);
+            clustered[u] = false;  // paleativo
           }
-        } else {
-          cout << u + 1 << " :: " << clustered[u] << ' ' << v[u].isCutpoint << endl;
         }
 
         // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
@@ -163,9 +162,10 @@ class Graph {
   }
 
   // Só pode ser chamada depois da primeira DFS e retorna o component do vértice de origem, w.
-  // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada
+  // Precisa retornar um ponteiro (?) pois, no geral, ela recebe o set<int> que retornará como entrada // pega casos brabos mas é instável
   set<int>* dfsComponent2(int w, int parent, bool clustered[], set<int>* component = nullptr, set<int>* lows = nullptr) {
     clustered[w] = true;
+    if (component == nullptr) component = new set<int>;
     component->insert(w);
 
     if (lows == nullptr) {  // ou parent == -1
@@ -174,6 +174,10 @@ class Graph {
 
     for (int u : v[w].adj) {
       if (u == parent) {
+        continue;
+      }
+
+      if (component->count(u)) {
         continue;
       }
 
@@ -192,11 +196,13 @@ class Graph {
             case 0:
               // lows->insert(min[u]); // não adiciona ainda. só adiciona se voltar (lows.size >= 1)
               lows->insert(min[w]);
+              lows->insert(min[u]);
               component->insert(u);
               // dfsComponent(u, w, clustered, component, lows);
               break;
             case 1:
               lows->insert(min[u]);
+              lows->insert(min[w]);
               dfsComponent2(u, w, clustered, component, lows);
             case 2:
               if (lows->count(min[u])) {  // só continua dfs no vértice se tiver low previsto (lista de lows já é igual a 2)
@@ -219,8 +225,18 @@ class Graph {
 
       if (v[w].isCutpoint) {
         // ¬¬ !clustered[u] ??
-        if (!v[u].isCutpoint && clustered[u] == false) {                                                // de um cutpoint acha um não cutpoint não explorado
-          if (lows != nullptr && lows->count(min[u])) dfsComponent2(u, w, clustered, component, lows);  // vai pra um vértice interno se o low foi previsto (independente do tamnho da lista lows)
+        if (!v[u].isCutpoint) {  // de um cutpoint acha um não cutpoint não explorado
+          if (lows != nullptr && lows->count(min[u])) {
+            dfsComponent2(u, w, clustered, component, lows);  // vai pra um vértice interno se o low foi previsto (independente do tamnho da lista lows)
+          } else if (lows->size() <= 1) {
+            if (VERBOSE) {
+              lows->insert(min[u]);
+              lows->insert(min[w]);
+              cout << w + 1 << '-' << u + 1 << "  Lows: ";
+              printSet(*lows, ' ');
+            }
+            dfsComponent2(u, w, clustered, component, lows);
+          }
         }
         if (v[u].isCutpoint) {        // de um cutpoint acha outro cutpoint
           if (lows->count(min[u])) {  // faz parte da component (pela numerologia) (será que em todos os casos??
@@ -230,21 +246,16 @@ class Graph {
             dfsComponent2(u, w, clustered, component, lows);
           }
         }
-
-        // Uma vez em um cutPoint não visita um não-cutpoint (começou em cutPoint)
-        if (v[u].isCutpoint == false) {
-          if (VERBOSE) cout << '\t' << "edge (" << char(w + 65) << "," << char(u + 65) << ") was ignored" << endl;
-          continue;  // checa próximo vizinho
-        }
       }
     }
-
-    // Checar se o cluster é inválido (pelo número de lows)
+    /* cout << " comp: ";
+    printSet(*component, ' ');
+    // Checar se o cluster é inválido (pelo número de lows) */
     return component;
   }
 
   bool isBiconnected(set<int> compCandidate) {
-    if (compCandidate.size() == 1) return false;
+    if (compCandidate.size() <= 1) return false;
     if (compCandidate.size() == 2) {
       if (VERBOSE) {
         cout << "     Set de tamanho 2 retornando true. Set -> ";
@@ -279,8 +290,7 @@ class Graph {
 
   set<int> getComponent(int x, bool* clusteredExplored) {
     set<int>* clusterComponent = new set<int>;
-    cout << "getComponent " << x + 1 << " :";
-    printSet(v[x].adj, ' ');
+
     clusterComponent = dfsComponent(x, -1, clusteredExplored, clusterComponent);
 
     if (clusterComponent->size() <= 1) {  // "Links Isolados não fazem parte de nenhum cluster"
@@ -340,12 +350,6 @@ class Graph {
         }
       }
     }
-
-    cout << endl
-         << endl
-         << "cutpoints: " << endl
-         << endl;
-    // Agora que identificamos todos clusters que possuem no mínimo um não-cutpoint (e marcamos os vértices visistados)
     // Identificaremos os clusters que são formados apenas por cutpoints (bordas)
 
     for (int x : cutPoints) {
@@ -381,10 +385,63 @@ class Graph {
       }
     }
 
+    if (VERBOSE) {
+      cout << endl
+           << " OS CASOS BRABOS (CLUSTER MISTOS, COM MAIS DE DOIS CUTPOINTS E VÉRTICES INTERNOS) :" << endl
+           << endl;
+
+      for (int i = 0; i < size; i++) {
+        cout << "v[" << i + 1 << "] = " << clusteredExplored[i] << endl;
+      }
+    }
+
+    for (int x : cutPoints) {
+      clusteredExplored[x] = false;
+    }
+
+    if (VERBOSE) {
+      cout << endl;
+      cout << "Grafo Depois das dfsComponent1 e antes da dfsComponent2 (pra pegar os casos brabos)" << endl;
+      print();
+      cout << endl;
+    }
+
+    if (VERBOSE) {
+      cout << "Começa checar os brabos a partir dos cutpoints" << endl;
+      cout << endl;
+    }
+
+    for (int i : cutPoints) {
+      set<int>* brabos = new set<int>;
+      if (v[i].adj.size() > 0) {
+        dfsComponent2(i, -1, clusteredExplored, brabos);
+        int valido = isBiconnected(*brabos);
+
+        if (VERBOSE) {
+          cout << "Brabo [" << i + 1 << "] (biconnected=" << valido << "): ";
+          if (brabos != nullptr) printSet(*brabos, ' ', ALFABETICAL, VERBOSE);
+        }
+        if (valido) {
+          for (int x : *brabos) {
+            for (int y : *brabos) {
+              if (x == y) continue;
+              if (v[y].adj.count(x)) {
+                v[x].adj.erase(y);
+                v[y].adj.erase(x);
+                if (VERBOSE) cout << "deleting edge (" << x << "-" << y << ")" << endl;
+              }
+            }
+          }
+          allClusters.insert(*brabos);
+        }
+      }
+    }
+
     return allClusters;
   }
 
-  set<int>* dfs(int w, int parent, int& t, set<int>* cutSet = nullptr) {
+  set<int>*
+  dfs(int w, int parent, int& t, set<int>* cutSet = nullptr) {
     set<int>* cutPoints;  // ||
 
     if (t != 0) {
